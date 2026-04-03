@@ -411,6 +411,33 @@ function computePercentile(values, percentile) {
   return sorted[lowerIndex] + (sorted[upperIndex] - sorted[lowerIndex]) * weight;
 }
 
+function interpolateRankedValue(lowerValue, upperValue, weight) {
+  if (lowerValue == null && upperValue == null) return null;
+  if (lowerValue == null) return upperValue;
+  if (upperValue == null) return lowerValue;
+  if (!Number.isFinite(Number(weight))) return lowerValue;
+  return Number(lowerValue) + (Number(upperValue) - Number(lowerValue)) * Number(weight);
+}
+
+function buildHistogramFromBucketRows(start, end, binWidth, bucketRows) {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(binWidth) || binWidth <= 0) {
+    return [];
+  }
+  const bucketCount = Math.max(1, Math.ceil((end - start) / binWidth));
+  const countsByBucket = new Map(
+    (bucketRows || []).map((row) => [Number(row.bucket_index), Number(row.count) || 0])
+  );
+
+  return Array.from({ length: bucketCount }, (_, index) => {
+    const bucketStart = start + (index * binWidth);
+    return {
+      start: bucketStart,
+      end: bucketStart + binWidth,
+      count: countsByBucket.get(index) || 0,
+    };
+  });
+}
+
 function computeScatterClusters(rows, {
   experienceBinSize = 1,
   salaryBinSize = 5000,
@@ -689,30 +716,126 @@ app.get('/api/scatterplot/chart', async (req, res) => {
     const db = await dbPromise;
     const SCATTERPLOT_RENDER_LIMIT = 20000;
     const { whereClause, params } = buildScatterplotWhereClause(req.query);
+    const salaryPercentile = 0.999;
     const totalCount = (await db.get(
       `SELECT COUNT(*) AS count FROM web_salary_scatterplot${whereClause}`,
       params
     )).count;
 
-    const sql = `SELECT file_folder_number,
-                        ${NUMERIC_SQL.contractSalary} AS contract_salary,
-                        ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
-                        district_type_name, education_level,
-                        CAST(education_level_rank AS DECIMAL(10,2)) AS education_level_rank,
-                        educator_type, educator_subtype
-                 FROM web_salary_scatterplot${whereClause}`;
-    const rows = await db.all(sql, params);
-    const salaries = rows
-      .map((row) => Number(row.contract_salary))
-      .filter((salary) => !Number.isNaN(salary));
-    const salaryPercentile = 0.999;
-    const salaryCap = computePercentile(salaries, salaryPercentile);
-    const chartRows = salaryCap != null
-      ? rows.filter((row) => Number(row.contract_salary) <= salaryCap)
-      : rows;
-    const outlierCount = rows.length - chartRows.length;
+    if (totalCount === 0) {
+      res.json({
+        results: [],
+        totalCount: 0,
+        renderLimit: SCATTERPLOT_RENDER_LIMIT,
+        salaryOutlierCount: 0,
+        salaryCap: null,
+        salaryPercentile,
+        clustered: false,
+        clusterCount: 0,
+      });
+      return;
+    }
+
+    const percentileRow = await db.get(
+      `WITH filtered AS (
+         SELECT ${NUMERIC_SQL.contractSalary} AS salary
+         FROM web_salary_scatterplot${whereClause}
+       ),
+       ordered AS (
+         SELECT salary,
+                ROW_NUMBER() OVER (ORDER BY salary) AS rn,
+                COUNT(*) OVER () AS total_count
+         FROM filtered
+       ),
+       positions AS (
+         SELECT MAX(total_count) AS total_count,
+                FLOOR((MAX(total_count) - 1) * :salaryPercentile) + 1 AS lower_rn,
+                CEIL((MAX(total_count) - 1) * :salaryPercentile) + 1 AS upper_rn,
+                ((MAX(total_count) - 1) * :salaryPercentile) - FLOOR((MAX(total_count) - 1) * :salaryPercentile) AS percentile_weight
+         FROM ordered
+       )
+       SELECT MAX(CASE WHEN ordered.rn = positions.lower_rn THEN ordered.salary END) AS percentile_lower,
+              MAX(CASE WHEN ordered.rn = positions.upper_rn THEN ordered.salary END) AS percentile_upper,
+              MAX(positions.percentile_weight) AS percentile_weight
+       FROM ordered
+       CROSS JOIN positions`,
+      {
+        ...params,
+        salaryPercentile,
+      }
+    );
+    const salaryCap = interpolateRankedValue(
+      percentileRow?.percentile_lower,
+      percentileRow?.percentile_upper,
+      percentileRow?.percentile_weight,
+    );
+    const chartWhereClause = salaryCap != null
+      ? `${whereClause} AND ${NUMERIC_SQL.contractSalary} <= :salaryCap`
+      : whereClause;
+    const chartParams = salaryCap != null
+      ? { ...params, salaryCap }
+      : params;
+    const chartCount = (await db.get(
+      `SELECT COUNT(*) AS count
+       FROM web_salary_scatterplot${chartWhereClause}`,
+      chartParams
+    )).count;
+    const outlierCount = Math.max(0, totalCount - chartCount);
     const clustered = totalCount > SCATTERPLOT_RENDER_LIMIT;
-    const displayRows = clustered ? computeScatterClusters(chartRows) : chartRows;
+    let displayRows = [];
+
+    if (clustered) {
+      displayRows = await db.all(
+        `WITH filtered AS (
+           SELECT ${NUMERIC_SQL.contractSalary} AS contract_salary,
+                  ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
+                  COALESCE(district_type_name, 'other') AS district_type_name
+           FROM web_salary_scatterplot${chartWhereClause}
+             AND years_of_experience IS NOT NULL
+         ),
+         binned AS (
+           SELECT FLOOR(years_of_experience) AS x_bin,
+                  FLOOR(contract_salary / 5000) AS y_bin,
+                  district_type_name
+           FROM filtered
+         ),
+         type_counts AS (
+           SELECT x_bin, y_bin, district_type_name, COUNT(*) AS district_type_count
+           FROM binned
+           GROUP BY x_bin, y_bin, district_type_name
+         ),
+         ranked AS (
+           SELECT x_bin,
+                  y_bin,
+                  district_type_name,
+                  district_type_count,
+                  ROW_NUMBER() OVER (PARTITION BY x_bin, y_bin ORDER BY district_type_count DESC, district_type_name ASC) AS rn,
+                  SUM(district_type_count) OVER (PARTITION BY x_bin, y_bin) AS cluster_count
+           FROM type_counts
+         )
+         SELECT CONCAT('cluster-', ROW_NUMBER() OVER (ORDER BY x_bin, y_bin)) AS scatterplot_id,
+                x_bin + 0.5 AS years_of_experience,
+                (y_bin * 5000) + 2500 AS contract_salary,
+                district_type_name,
+                cluster_count
+         FROM ranked
+         WHERE rn = 1
+         ORDER BY x_bin, y_bin`,
+        chartParams
+      );
+    } else {
+      displayRows = await db.all(
+        `SELECT file_folder_number,
+                ${NUMERIC_SQL.contractSalary} AS contract_salary,
+                ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
+                district_type_name, education_level,
+                CAST(education_level_rank AS DECIMAL(10,2)) AS education_level_rank,
+                educator_type, educator_subtype
+         FROM web_salary_scatterplot${chartWhereClause}`,
+        chartParams
+      );
+    }
+
     res.json({
       results: displayRows,
       totalCount,
@@ -1093,99 +1216,172 @@ app.get('/api/salary-finder/chart', async (req, res) => {
     const maxExperience = req.query.maxExperience != null ? parseFloat(req.query.maxExperience) : null;
     const minEducationRank = req.query.minEducationRank != null ? parseInt(req.query.minEducationRank, 10) : null;
     const maxEducationRank = req.query.maxEducationRank != null ? parseInt(req.query.maxEducationRank, 10) : null;
-
-    const selectClause = `SELECT file_folder_number,
-                                 ${NUMERIC_SQL.contractSalary} AS contract_salary,
-                                 ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
-                                 highest_education_level,
-                                 ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
-                                 educator_type, educator_subtype,
-                                 county_name, district_name, school_name`;
-    let sql = `${selectClause}
-               FROM web_salary_finder
-               WHERE contract_salary IS NOT NULL AND ${NUMERIC_SQL.contractSalary} > 0`;
+    const histogramPercentile = 0.999;
+    const histogramBinCount = 15;
+    let whereClause = ` WHERE contract_salary IS NOT NULL AND ${NUMERIC_SQL.contractSalary} > 0`;
     const params = {};
     if (schoolYear) {
-      sql += ' AND school_year = :schoolYear';
+      whereClause += ' AND school_year = :schoolYear';
       params.schoolYear = schoolYear;
     }
     if (districtTypes.length > 0) {
       const { clause, params: inParams } = buildInClause('dt', districtTypes);
-      sql += ` AND district_type_name IN ${clause}`;
+      whereClause += ` AND district_type_name IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (schoolClassifications.length > 0) {
       const { clause, params: inParams } = buildInClause('sc', schoolClassifications);
-      sql += ` AND school_classification_name IN ${clause}`;
+      whereClause += ` AND school_classification_name IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (educatorCategories.length > 0) {
       const { clause, params: inParams } = buildInClause('ec', educatorCategories);
-      sql += ` AND educator_type IN ${clause}`;
+      whereClause += ` AND educator_type IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (educatorSubcategories.length > 0) {
       const { clause, params: inParams } = buildInClause('esub', educatorSubcategories);
-      sql += ` AND educator_subtype IN ${clause}`;
+      whereClause += ` AND educator_subtype IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (counties.length > 0) {
       const { clause, params: inParams } = buildInClause('cty', counties);
-      sql += ` AND county_name IN ${clause}`;
+      whereClause += ` AND county_name IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (districts.length > 0) {
       const { clause, params: inParams } = buildInClause('dist', districts);
-      sql += ` AND district_name IN ${clause}`;
+      whereClause += ` AND district_name IN ${clause}`;
       Object.assign(params, inParams);
     }
     if (schools.length > 0) {
       const { clause, params: inParams } = buildInClause('sch', schools);
-      sql += ` AND school_name IN ${clause}`;
+      whereClause += ` AND school_name IN ${clause}`;
       Object.assign(params, inParams);
     }
-    sql = appendFullTimeOnlyClause(sql, params, includePartTime);
+    whereClause = appendFullTimeOnlyClause(whereClause, params, includePartTime);
     if (minExperience != null) {
-      sql += ` AND ${NUMERIC_SQL.yearsOfExperience} >= :minExp`;
+      whereClause += ` AND ${NUMERIC_SQL.yearsOfExperience} >= :minExp`;
       params.minExp = minExperience;
     }
     if (maxExperience != null) {
-      sql += ` AND ${NUMERIC_SQL.yearsOfExperience} <= :maxExp`;
+      whereClause += ` AND ${NUMERIC_SQL.yearsOfExperience} <= :maxExp`;
       params.maxExp = maxExperience;
     }
     if (minEducationRank != null) {
-      sql += ` AND ${NUMERIC_SQL.highestEducationRank} >= :minEduRank`;
+      whereClause += ` AND ${NUMERIC_SQL.highestEducationRank} >= :minEduRank`;
       params.minEduRank = minEducationRank;
     }
     if (maxEducationRank != null) {
-      sql += ` AND ${NUMERIC_SQL.highestEducationRank} <= :maxEduRank`;
+      whereClause += ` AND ${NUMERIC_SQL.highestEducationRank} <= :maxEduRank`;
       params.maxEduRank = maxEducationRank;
     }
-    const countSql = sql.replace(selectClause, 'SELECT COUNT(*) AS count');
-    const totalCount = (await db.get(countSql, params)).count;
-    const salarySql = sql.replace(selectClause, 'SELECT contract_salary');
-    const salaryRows = await db.all(salarySql, params);
-    const salaries = salaryRows
-      .map((r) => Number(r.contract_salary))
-      .filter((s) => !Number.isNaN(s));
-    const histogramPercentile = 0.999;
-    const histogramCap = computePercentile(salaries, histogramPercentile);
-    const chartSalaries = histogramCap != null
-      ? salaries.filter((salary) => salary <= histogramCap)
-      : salaries;
-    const outlierCount = salaries.length - chartSalaries.length;
-    const histogram = computeHistogram(chartSalaries, 15);
-    let averageSalary = null;
-    let medianSalary = null;
+    const aggregateRow = await db.get(
+      `SELECT COUNT(*) AS total_count,
+              AVG(${NUMERIC_SQL.contractSalary}) AS average_salary
+       FROM web_salary_finder${whereClause}`,
+      params
+    );
+    const totalCount = Number(aggregateRow?.total_count || 0);
 
-    if (salaries.length > 0) {
-      const sum = salaries.reduce((acc, value) => acc + value, 0);
-      averageSalary = sum / salaries.length;
-      const sortedSalaries = [...salaries].sort((a, b) => a - b);
-      const midpoint = Math.floor(sortedSalaries.length / 2);
-      medianSalary = sortedSalaries.length % 2 !== 0
-        ? sortedSalaries[midpoint]
-        : (sortedSalaries[midpoint - 1] + sortedSalaries[midpoint]) / 2;
+    if (totalCount === 0) {
+      res.json({
+        histogram: [],
+        totalCount: 0,
+        histogramOutlierCount: 0,
+        histogramCap: null,
+        histogramPercentile,
+        averageSalary: null,
+        medianSalary: null,
+      });
+      return;
+    }
+
+    const orderedStats = await db.get(
+      `WITH filtered AS (
+         SELECT ${NUMERIC_SQL.contractSalary} AS salary
+         FROM web_salary_finder${whereClause}
+       ),
+       ordered AS (
+         SELECT salary,
+                ROW_NUMBER() OVER (ORDER BY salary) AS rn,
+                COUNT(*) OVER () AS total_count
+         FROM filtered
+       ),
+       positions AS (
+         SELECT MAX(total_count) AS total_count,
+                FLOOR((MAX(total_count) - 1) * :histogramPercentile) + 1 AS lower_rn,
+                CEIL((MAX(total_count) - 1) * :histogramPercentile) + 1 AS upper_rn,
+                ((MAX(total_count) - 1) * :histogramPercentile) - FLOOR((MAX(total_count) - 1) * :histogramPercentile) AS percentile_weight,
+                FLOOR((MAX(total_count) + 1) / 2) AS median_lower_rn,
+                FLOOR((MAX(total_count) + 2) / 2) AS median_upper_rn
+         FROM ordered
+       )
+       SELECT AVG(CASE WHEN ordered.rn IN (positions.median_lower_rn, positions.median_upper_rn) THEN ordered.salary END) AS median_salary,
+              MAX(CASE WHEN ordered.rn = positions.lower_rn THEN ordered.salary END) AS percentile_lower,
+              MAX(CASE WHEN ordered.rn = positions.upper_rn THEN ordered.salary END) AS percentile_upper,
+              MAX(positions.percentile_weight) AS percentile_weight
+       FROM ordered
+       CROSS JOIN positions`,
+      {
+        ...params,
+        histogramPercentile,
+      }
+    );
+
+    const averageSalary = aggregateRow?.average_salary != null ? Number(aggregateRow.average_salary) : null;
+    const medianSalary = orderedStats?.median_salary != null ? Number(orderedStats.median_salary) : null;
+    const histogramCap = interpolateRankedValue(
+      orderedStats?.percentile_lower,
+      orderedStats?.percentile_upper,
+      orderedStats?.percentile_weight,
+    );
+
+    const chartWhereClause = histogramCap != null
+      ? `${whereClause} AND ${NUMERIC_SQL.contractSalary} <= :histogramCap`
+      : whereClause;
+    const chartParams = histogramCap != null
+      ? { ...params, histogramCap }
+      : params;
+    const chartStats = await db.get(
+      `SELECT COUNT(*) AS chart_count,
+              MIN(${NUMERIC_SQL.contractSalary}) AS min_salary,
+              MAX(${NUMERIC_SQL.contractSalary}) AS max_salary
+       FROM web_salary_finder${chartWhereClause}`,
+      chartParams
+    );
+    const chartCount = Number(chartStats?.chart_count || 0);
+    const outlierCount = Math.max(0, totalCount - chartCount);
+    let histogram = [];
+
+    if (chartCount === 1 || chartStats?.min_salary === chartStats?.max_salary) {
+      const singleValue = chartStats?.min_salary != null ? Number(chartStats.min_salary) : null;
+      histogram = singleValue == null ? [] : [{ start: singleValue, end: singleValue, count: chartCount }];
+    } else if (chartCount > 1) {
+      const minSalary = Number(chartStats.min_salary);
+      const maxSalary = Number(chartStats.max_salary);
+      const rawBinSize = (maxSalary - minSalary) / histogramBinCount;
+      const binWidth = Math.max(1000, Math.ceil(rawBinSize / 1000) * 1000);
+      const histogramStart = Math.floor(minSalary / 1000) * 1000;
+      let histogramEnd = histogramStart + (binWidth * histogramBinCount);
+      while (histogramEnd < maxSalary) {
+        histogramEnd += binWidth;
+      }
+
+      const bucketRows = await db.all(
+        `SELECT FLOOR((${NUMERIC_SQL.contractSalary} - :histogramStart) / :histogramBinWidth) AS bucket_index,
+                COUNT(*) AS count
+         FROM web_salary_finder${chartWhereClause}
+         GROUP BY bucket_index
+         ORDER BY bucket_index`,
+        {
+          ...chartParams,
+          histogramStart,
+          histogramBinWidth: binWidth,
+        }
+      );
+
+      histogram = buildHistogramFromBucketRows(histogramStart, histogramEnd, binWidth, bucketRows);
     }
 
     res.json({
