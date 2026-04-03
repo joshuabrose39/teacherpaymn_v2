@@ -253,6 +253,7 @@ export default function SalaryFinder() {
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
   const [histogramKeyPulse, setHistogramKeyPulse] = useState(false);
+  const [hasLoadedChart, setHasLoadedChart] = useState(false);
   const isInitialTableLoad = tableLoading && results.length === 0;
 
   // Sorting configuration for the educator table.  By default sort
@@ -421,6 +422,7 @@ export default function SalaryFinder() {
     setChartLoading(true);
     setTableLoading(false);
     setError(null);
+    setHasLoadedChart(false);
     setResults([]);
     setTooManyTableResults(false);
     setTableOffset(0);
@@ -441,6 +443,7 @@ export default function SalaryFinder() {
       setHistogramPercentile(json.histogramPercentile ?? 0.999);
       setMedianSalary(json.medianSalary ?? null);
       setPendingTableQuery(query);
+      setHasLoadedChart(true);
       if (tableVisible) {
         fetchTableResults(query, requestId);
       }
@@ -733,7 +736,7 @@ export default function SalaryFinder() {
   };
 
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-body">
         {/* Page header */}
         <div className="page-header salary-finder-header">
@@ -986,7 +989,7 @@ export default function SalaryFinder() {
           <div className="col col-9 salary-finder-chart-column">
             {chartLoading && <p>Loading chart...</p>}
             {error && <p style={{ color: 'red' }}>{error}</p>}
-            {!chartLoading && !error && (
+            {!chartLoading && !error && hasLoadedChart && (
               <div className="vertical-grid salary-finder-chart-grid">
                 <div className="card salary-finder-histogram-card">
                   <div className="card-header">
@@ -1092,7 +1095,7 @@ export default function SalaryFinder() {
             )}
           </div>
         </div>
-        {!chartLoading && !error && (
+        {!chartLoading && !error && hasLoadedChart && (
           <div className="card salary-finder-results-card" ref={tableSectionRef}>
                 <div className="card-header">
                   <div>

@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function AboutProject() {
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-body">
         <div className="page-header">
           <div className="page-title">

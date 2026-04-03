@@ -52,10 +52,15 @@ body {
   letter-spacing: -0.02em;
 }
 
+.page-title {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .page-title p {
   margin: 8px 0 0;
   color: var(--muted);
-  max-width: 540px;
+  max-width: none;
 }
 
 /* Toolbar styles used in page headers */
@@ -64,6 +69,7 @@ body {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  width: 100%;
 }
 
 .header-field {
@@ -466,6 +472,12 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.page-shell {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .stat-card {

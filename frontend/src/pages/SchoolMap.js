@@ -158,7 +158,7 @@ export default function SchoolMap() {
   ];
 
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-body">
         {/* Page header with title and description */}
         <div className="page-header">

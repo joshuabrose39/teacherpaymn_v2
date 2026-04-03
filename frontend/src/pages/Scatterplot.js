@@ -148,6 +148,7 @@ export default function Scatterplot() {
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'contract_salary', direction: 'desc' });
+  const [hasLoadedChart, setHasLoadedChart] = useState(false);
   const isInitialTableLoad = tableLoading && tableResults.length === 0;
   const [pendingTableQuery, setPendingTableQuery] = useState('');
   const [loadedTableQuery, setLoadedTableQuery] = useState('');
@@ -271,6 +272,7 @@ export default function Scatterplot() {
     setChartLoading(true);
     setTableLoading(false);
     setError(null);
+    setHasLoadedChart(false);
     setResults([]);
     setTableResults([]);
     setTooManyToRender(false);
@@ -294,6 +296,7 @@ export default function Scatterplot() {
       setClustered(Boolean(json.clustered));
       setClusterCount(json.clusterCount || 0);
       setPendingTableQuery(query);
+      setHasLoadedChart(true);
       if (tableVisible) {
         fetchTableResults(query, requestId);
       }
@@ -479,7 +482,7 @@ export default function Scatterplot() {
   };
 
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-body">
         {/* Page header with title and description */}
         <div className="page-header">
@@ -650,7 +653,7 @@ export default function Scatterplot() {
             <div className="results-wrapper">
               {chartLoading && <p>Loading chart...</p>}
               {error && <p style={{ color: 'red' }}>{error}</p>}
-              {!chartLoading && !error && (
+              {!chartLoading && !error && hasLoadedChart && (
                 results.length === 0 ? (
                   <p>No educators match your filters.</p>
                 ) : (

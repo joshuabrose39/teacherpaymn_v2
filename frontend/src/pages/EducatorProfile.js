@@ -29,7 +29,7 @@ function formatFieldValue(value) {
 
 function RecordListSection({ title, rows }) {
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-header">
         <div>
           <h2 className="card-title">{title}</h2>
@@ -109,7 +109,7 @@ export default function EducatorProfile() {
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
 
   return (
-    <div className="card">
+    <div className="card page-shell">
       <div className="card-body">
         <div className="page-header">
           <div className="page-title">
