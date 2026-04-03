@@ -382,7 +382,7 @@ export default function SalaryFinder() {
     return new URLSearchParams(params).toString();
   };
 
-  const TABLE_BATCH_SIZE = 500;
+  const TABLE_BATCH_SIZE = 100;
 
   const fetchTableResults = async (query, requestId, options = {}) => {
     const append = Boolean(options.append);
