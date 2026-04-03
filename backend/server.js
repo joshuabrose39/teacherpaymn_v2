@@ -655,7 +655,11 @@ app.get('/api/scatterplot', async (req, res) => {
                         educator_type, educator_subtype,
                         county_name, district_name, school_name
                  FROM web_salary_scatterplot${whereClause}`;
-    const rows = await db.all(sql, params);
+    const rows = await db.all(sql, {
+      ...params,
+      tableLimit: limit,
+      tableOffset: offset,
+    });
     const salaries = rows
       .map((row) => Number(row.contract_salary))
       .filter((salary) => !Number.isNaN(salary));
@@ -732,22 +736,15 @@ app.get('/api/scatterplot/chart', async (req, res) => {
 app.get('/api/scatterplot/table', async (req, res) => {
   try {
     const db = await dbPromise;
-    const SCATTERPLOT_RENDER_LIMIT = 20000;
     const { whereClause, params } = buildScatterplotWhereClause(req.query);
+    const requestedLimit = req.query.limit != null ? parseInt(String(req.query.limit), 10) : 500;
+    const requestedOffset = req.query.offset != null ? parseInt(String(req.query.offset), 10) : 0;
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 2000) : 500;
+    const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
     const totalCount = (await db.get(
       `SELECT COUNT(*) AS count FROM web_salary_scatterplot${whereClause}`,
       params
     )).count;
-
-    if (totalCount > SCATTERPLOT_RENDER_LIMIT) {
-      res.json({
-        results: [],
-        tooManyToRender: true,
-        totalCount,
-        renderLimit: SCATTERPLOT_RENDER_LIMIT,
-      });
-      return;
-    }
 
     const sql = `SELECT file_folder_number,
                         ${NUMERIC_SQL.contractSalary} AS contract_salary,
@@ -756,13 +753,18 @@ app.get('/api/scatterplot/table', async (req, res) => {
                         CAST(education_level_rank AS DECIMAL(10,2)) AS education_level_rank,
                         educator_type, educator_subtype,
                         county_name, district_name, school_name
-                 FROM web_salary_scatterplot${whereClause}`;
+                 FROM web_salary_scatterplot${whereClause}
+                 ORDER BY ${NUMERIC_SQL.contractSalary} DESC, file_folder_number ASC
+                 LIMIT :tableLimit OFFSET :tableOffset`;
     const rows = await db.all(sql, params);
     res.json({
       results: rows,
       tooManyToRender: false,
       totalCount,
-      renderLimit: SCATTERPLOT_RENDER_LIMIT,
+      renderLimit: null,
+      offset,
+      limit,
+      hasMore: offset + rows.length < totalCount,
     });
   } catch (err) {
     console.error(err);
@@ -956,13 +958,14 @@ app.get('/api/salary-finder', async (req, res) => {
     const minEducationRank = req.query.minEducationRank != null ? parseInt(req.query.minEducationRank, 10) : null;
     const maxEducationRank = req.query.maxEducationRank != null ? parseInt(req.query.maxEducationRank, 10) : null;
 
-    let sql = `SELECT file_folder_number,
-                      ${NUMERIC_SQL.contractSalary} AS contract_salary,
-                      ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
-                      highest_education_level,
-                      ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name
+    const selectClause = `SELECT file_folder_number,
+                                 ${NUMERIC_SQL.contractSalary} AS contract_salary,
+                                 ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
+                                 highest_education_level,
+                                 ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
+                                 educator_type, educator_subtype,
+                                 county_name, district_name, school_name`;
+    let sql = `${selectClause}
                FROM web_salary_finder
                WHERE contract_salary IS NOT NULL AND ${NUMERIC_SQL.contractSalary} > 0`;
     const params = {};
@@ -1025,21 +1028,9 @@ app.get('/api/salary-finder', async (req, res) => {
       sql += ` AND ${NUMERIC_SQL.highestEducationRank} <= :maxEduRank`;
       params.maxEduRank = maxEducationRank;
     }
-    const countSql = sql.replace(
-      `SELECT file_folder_number, contract_salary, years_of_experience,
-                      highest_education_level, highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name`,
-      'SELECT COUNT(*) AS count'
-    );
+    const countSql = sql.replace(selectClause, 'SELECT COUNT(*) AS count');
     const totalCount = (await db.get(countSql, params)).count;
-    const salarySql = sql.replace(
-      `SELECT file_folder_number, contract_salary, years_of_experience,
-                      highest_education_level, highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name`,
-      'SELECT contract_salary'
-    );
+    const salarySql = sql.replace(selectClause, 'SELECT contract_salary');
     const salaryRows = await db.all(salarySql, params);
     const salaries = salaryRows
       .map((r) => Number(r.contract_salary))
@@ -1103,13 +1094,14 @@ app.get('/api/salary-finder/chart', async (req, res) => {
     const minEducationRank = req.query.minEducationRank != null ? parseInt(req.query.minEducationRank, 10) : null;
     const maxEducationRank = req.query.maxEducationRank != null ? parseInt(req.query.maxEducationRank, 10) : null;
 
-    let sql = `SELECT file_folder_number,
-                      ${NUMERIC_SQL.contractSalary} AS contract_salary,
-                      ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
-                      highest_education_level,
-                      ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name
+    const selectClause = `SELECT file_folder_number,
+                                 ${NUMERIC_SQL.contractSalary} AS contract_salary,
+                                 ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
+                                 highest_education_level,
+                                 ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
+                                 educator_type, educator_subtype,
+                                 county_name, district_name, school_name`;
+    let sql = `${selectClause}
                FROM web_salary_finder
                WHERE contract_salary IS NOT NULL AND ${NUMERIC_SQL.contractSalary} > 0`;
     const params = {};
@@ -1169,21 +1161,9 @@ app.get('/api/salary-finder/chart', async (req, res) => {
       sql += ` AND ${NUMERIC_SQL.highestEducationRank} <= :maxEduRank`;
       params.maxEduRank = maxEducationRank;
     }
-    const countSql = sql.replace(
-      `SELECT file_folder_number, contract_salary, years_of_experience,
-                      highest_education_level, highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name`,
-      'SELECT COUNT(*) AS count'
-    );
+    const countSql = sql.replace(selectClause, 'SELECT COUNT(*) AS count');
     const totalCount = (await db.get(countSql, params)).count;
-    const salarySql = sql.replace(
-      `SELECT file_folder_number, contract_salary, years_of_experience,
-                      highest_education_level, highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name`,
-      'SELECT contract_salary'
-    );
+    const salarySql = sql.replace(selectClause, 'SELECT contract_salary');
     const salaryRows = await db.all(salarySql, params);
     const salaries = salaryRows
       .map((r) => Number(r.contract_salary))
@@ -1226,7 +1206,6 @@ app.get('/api/salary-finder/chart', async (req, res) => {
 app.get('/api/salary-finder/table', async (req, res) => {
   try {
     const db = await dbPromise;
-    const SALARY_FINDER_RENDER_LIMIT = 20000;
     const districtTypes = parseMulti(req.query.districtTypes);
     const schoolClassifications = expandSchoolClassificationFilters(parseMulti(req.query.schoolClassifications));
     const educatorCategories = parseMulti(req.query.educatorCategories);
@@ -1240,14 +1219,19 @@ app.get('/api/salary-finder/table', async (req, res) => {
     const maxExperience = req.query.maxExperience != null ? parseFloat(req.query.maxExperience) : null;
     const minEducationRank = req.query.minEducationRank != null ? parseInt(req.query.minEducationRank, 10) : null;
     const maxEducationRank = req.query.maxEducationRank != null ? parseInt(req.query.maxEducationRank, 10) : null;
+    const requestedLimit = req.query.limit != null ? parseInt(String(req.query.limit), 10) : 500;
+    const requestedOffset = req.query.offset != null ? parseInt(String(req.query.offset), 10) : 0;
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 2000) : 500;
+    const offset = Number.isFinite(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
 
-    let sql = `SELECT file_folder_number,
-                      ${NUMERIC_SQL.contractSalary} AS contract_salary,
-                      ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
-                      highest_education_level,
-                      ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name
+    const selectClause = `SELECT file_folder_number,
+                                 ${NUMERIC_SQL.contractSalary} AS contract_salary,
+                                 ${NUMERIC_SQL.yearsOfExperience} AS years_of_experience,
+                                 highest_education_level,
+                                 ${NUMERIC_SQL.highestEducationRank} AS highest_education_level_rank,
+                                 educator_type, educator_subtype,
+                                 county_name, district_name, school_name`;
+    let sql = `${selectClause}
                FROM web_salary_finder
                WHERE contract_salary IS NOT NULL AND ${NUMERIC_SQL.contractSalary} > 0`;
     const params = {};
@@ -1307,31 +1291,24 @@ app.get('/api/salary-finder/table', async (req, res) => {
       sql += ` AND ${NUMERIC_SQL.highestEducationRank} <= :maxEduRank`;
       params.maxEduRank = maxEducationRank;
     }
-    const countSql = sql.replace(
-      `SELECT file_folder_number, contract_salary, years_of_experience,
-                      highest_education_level, highest_education_level_rank,
-                      educator_type, educator_subtype,
-                      county_name, district_name, school_name`,
-      'SELECT COUNT(*) AS count'
-    );
+    const countSql = sql.replace(selectClause, 'SELECT COUNT(*) AS count');
     const totalCount = (await db.get(countSql, params)).count;
-
-    if (totalCount > SALARY_FINDER_RENDER_LIMIT) {
-      res.json({
-        results: [],
-        tooManyTableResults: true,
-        totalCount,
-        renderLimit: SALARY_FINDER_RENDER_LIMIT,
-      });
-      return;
-    }
-
-    const rows = await db.all(sql, params);
+    sql += `
+      ORDER BY ${NUMERIC_SQL.contractSalary} DESC, file_folder_number ASC
+      LIMIT :tableLimit OFFSET :tableOffset`;
+    const rows = await db.all(sql, {
+      ...params,
+      tableLimit: limit,
+      tableOffset: offset,
+    });
     res.json({
       results: rows,
       tooManyTableResults: false,
       totalCount,
-      renderLimit: SALARY_FINDER_RENDER_LIMIT,
+      renderLimit: null,
+      offset,
+      limit,
+      hasMore: offset + rows.length < totalCount,
     });
   } catch (err) {
     console.error(err);

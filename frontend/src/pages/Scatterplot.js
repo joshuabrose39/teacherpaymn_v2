@@ -137,6 +137,8 @@ export default function Scatterplot() {
   const [tooManyToRender, setTooManyToRender] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [renderLimit, setRenderLimit] = useState(20000);
+  const [tableOffset, setTableOffset] = useState(0);
+  const [tableHasMore, setTableHasMore] = useState(false);
   const [salaryOutlierCount, setSalaryOutlierCount] = useState(0);
   const [salaryCap, setSalaryCap] = useState(null);
   const [salaryPercentile, setSalaryPercentile] = useState(0.999);
@@ -150,6 +152,7 @@ export default function Scatterplot() {
   const [loadedTableQuery, setLoadedTableQuery] = useState('');
   const [tableVisible, setTableVisible] = useState(false);
   const tableSectionRef = useRef(null);
+  const tableLoadMoreRef = useRef(null);
   const requestSequenceRef = useRef(0);
 
   // Mobile filter panel state.
@@ -228,19 +231,28 @@ export default function Scatterplot() {
     return new URLSearchParams(params).toString();
   };
 
-  const fetchTableResults = async (query, requestId) => {
-    if (!query || loadedTableQuery === query || tableLoading) return;
+  const TABLE_BATCH_SIZE = 500;
+
+  const fetchTableResults = async (query, requestId, options = {}) => {
+    const append = Boolean(options.append);
+    const nextOffset = append ? tableOffset : 0;
+    if (!query || (!append && loadedTableQuery === query) || tableLoading) return;
     setTableLoading(true);
     try {
-      const url = apiUrl(`/api/scatterplot/table${query ? `?${query}` : ''}`);
+      const queryWithPaging = new URLSearchParams(query);
+      queryWithPaging.set('limit', String(TABLE_BATCH_SIZE));
+      queryWithPaging.set('offset', String(nextOffset));
+      const url = apiUrl(`/api/scatterplot/table?${queryWithPaging.toString()}`);
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('Failed to load scatterplot table');
       const json = await resp.json();
       if (requestSequenceRef.current !== requestId) return;
-      setTableResults(json.results || []);
+      setTableResults((prev) => (append ? [...prev, ...(json.results || [])] : (json.results || [])));
       setTooManyToRender(Boolean(json.tooManyToRender));
       setTotalCount(json.totalCount ?? 0);
       setRenderLimit(json.renderLimit || 20000);
+      setTableOffset((json.offset ?? nextOffset) + (json.results || []).length);
+      setTableHasMore(Boolean(json.hasMore));
       setLoadedTableQuery(query);
     } catch (err) {
       if (requestSequenceRef.current === requestId) {
@@ -261,6 +273,8 @@ export default function Scatterplot() {
     setResults([]);
     setTableResults([]);
     setTooManyToRender(false);
+    setTableOffset(0);
+    setTableHasMore(false);
     setPendingTableQuery('');
     setLoadedTableQuery('');
     try {
@@ -310,9 +324,25 @@ export default function Scatterplot() {
   }, [chartLoading]);
 
   useEffect(() => {
-    if (!tableVisible || !pendingTableQuery || loadedTableQuery === pendingTableQuery || chartLoading || clustered) return;
+    if (!tableVisible || !pendingTableQuery || loadedTableQuery === pendingTableQuery || chartLoading) return;
     fetchTableResults(pendingTableQuery, requestSequenceRef.current);
-  }, [chartLoading, clustered, loadedTableQuery, pendingTableQuery, tableVisible]);
+  }, [chartLoading, loadedTableQuery, pendingTableQuery, tableVisible]);
+
+  useEffect(() => {
+    const node = tableLoadMoreRef.current;
+    if (!node || !tableVisible || !tableHasMore || tableLoading) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        fetchTableResults(loadedTableQuery || pendingTableQuery, requestSequenceRef.current, { append: true });
+      },
+      { rootMargin: '600px 0px' },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loadedTableQuery, pendingTableQuery, tableHasMore, tableLoading, tableVisible]);
 
   useEffect(() => {
     async function initializePage() {
@@ -629,7 +659,7 @@ export default function Scatterplot() {
                         <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary vs. Experience</h2>
                         <div className="card-subtitle">
                           {clustered
-                            ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators. Filter below ${renderLimit.toLocaleString()} results to see individual educators.`
+                            ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators. The table below can still be loaded in batches.`
                             : `Each dot represents an educator. ${totalCount.toLocaleString()} Educators Found`}
                         </div>
                         {salaryOutlierCount > 0 && salaryCap != null && (
@@ -742,17 +772,11 @@ export default function Scatterplot() {
             <div className="card-header">
               <div>
                 <h2 className="card-title">{totalCount.toLocaleString()} Educators Found</h2>
-                {!clustered && !tableLoading && tableResults.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
+                {!tableLoading && tableResults.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
               </div>
             </div>
             <div className="card-body">
-              {clustered ? (
-                <div className="empty-chart-message">
-                  <p style={{ textAlign: 'center', margin: '2rem 0' }}>
-                    {totalCount.toLocaleString()} results match your filters. Please narrow the results to {renderLimit.toLocaleString()} or fewer educators to display the individual educator table.
-                  </p>
-                </div>
-              ) : !tableVisible ? (
+              {!tableVisible ? (
                 <div className="empty-chart-message">
                   <p style={{ textAlign: 'center', margin: '2rem 0' }}>
                     Scroll a little farther to load the educator table.
@@ -763,73 +787,85 @@ export default function Scatterplot() {
                   <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading educator table...</p>
                 </div>
               ) : tableResults.length > 0 && (
-                <div className="salary-finder-table-wrap">
-                  <table className="results-table">
-                    <thead>
-                      <tr>
-                        <th onClick={() => requestSort('file_folder_number')} style={{ cursor: 'pointer' }}>
-                          File Folder Number
-                          {sortConfig.key === 'file_folder_number' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('contract_salary')} style={{ cursor: 'pointer' }}>
-                          Contract Salary
-                          {sortConfig.key === 'contract_salary' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('years_of_experience')} style={{ cursor: 'pointer' }}>
-                          Years of Experience
-                          {sortConfig.key === 'years_of_experience' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('education_level_rank')} style={{ cursor: 'pointer' }}>
-                          Education Level
-                          {sortConfig.key === 'education_level_rank' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('educator_type')} style={{ cursor: 'pointer' }}>
-                          Educator Category
-                          {sortConfig.key === 'educator_type' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('educator_subtype')} style={{ cursor: 'pointer' }}>
-                          Educator Subcategory
-                          {sortConfig.key === 'educator_subtype' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('county_name')} style={{ cursor: 'pointer' }}>
-                          County
-                          {sortConfig.key === 'county_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('district_name')} style={{ cursor: 'pointer' }}>
-                          District
-                          {sortConfig.key === 'district_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                        <th onClick={() => requestSort('school_name')} style={{ cursor: 'pointer' }}>
-                          School
-                          {sortConfig.key === 'school_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedResults.map((row, index) => (
-                        <tr key={`${row.file_folder_number}-${index}`}>
-                          <td>
-                            <NavLink
-                              to={`/educator/${row.file_folder_number}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {row.file_folder_number}
-                            </NavLink>
-                          </td>
-                          <td>${row.contract_salary != null ? Math.round(row.contract_salary).toLocaleString() : '—'}</td>
-                          <td>{row.years_of_experience != null ? row.years_of_experience : '—'}</td>
-                          <td>{row.education_level || '—'}</td>
-                          <td>{row.educator_type || '—'}</td>
-                          <td>{row.educator_subtype || '—'}</td>
-                          <td>{row.county_name || '—'}</td>
-                          <td>{row.district_name || '—'}</td>
-                          <td>{row.school_name || '—'}</td>
+                <>
+                  <div className="salary-finder-table-wrap">
+                    <table className="results-table">
+                      <thead>
+                        <tr>
+                          <th onClick={() => requestSort('file_folder_number')} style={{ cursor: 'pointer' }}>
+                            File Folder Number
+                            {sortConfig.key === 'file_folder_number' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('contract_salary')} style={{ cursor: 'pointer' }}>
+                            Contract Salary
+                            {sortConfig.key === 'contract_salary' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('years_of_experience')} style={{ cursor: 'pointer' }}>
+                            Years of Experience
+                            {sortConfig.key === 'years_of_experience' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('education_level_rank')} style={{ cursor: 'pointer' }}>
+                            Education Level
+                            {sortConfig.key === 'education_level_rank' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('educator_type')} style={{ cursor: 'pointer' }}>
+                            Educator Category
+                            {sortConfig.key === 'educator_type' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('educator_subtype')} style={{ cursor: 'pointer' }}>
+                            Educator Subcategory
+                            {sortConfig.key === 'educator_subtype' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('county_name')} style={{ cursor: 'pointer' }}>
+                            County
+                            {sortConfig.key === 'county_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('district_name')} style={{ cursor: 'pointer' }}>
+                            District
+                            {sortConfig.key === 'district_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
+                          <th onClick={() => requestSort('school_name')} style={{ cursor: 'pointer' }}>
+                            School
+                            {sortConfig.key === 'school_name' && <span>{sortConfig.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {sortedResults.map((row, index) => (
+                          <tr key={`${row.file_folder_number}-${index}`}>
+                            <td>
+                              <NavLink
+                                to={`/educator/${row.file_folder_number}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {row.file_folder_number}
+                              </NavLink>
+                            </td>
+                            <td>${row.contract_salary != null ? Math.round(row.contract_salary).toLocaleString() : '—'}</td>
+                            <td>{row.years_of_experience != null ? row.years_of_experience : '—'}</td>
+                            <td>{row.education_level || '—'}</td>
+                            <td>{row.educator_type || '—'}</td>
+                            <td>{row.educator_subtype || '—'}</td>
+                            <td>{row.county_name || '—'}</td>
+                            <td>{row.district_name || '—'}</td>
+                            <td>{row.school_name || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {(tableHasMore || tableLoading) && (
+                    <div
+                      ref={tableLoadMoreRef}
+                      className="scatterplot-auto-load-indicator"
+                    >
+                      {tableLoading
+                        ? 'Loading more educators...'
+                        : `Scroll to load ${Math.min(TABLE_BATCH_SIZE, totalCount - tableOffset).toLocaleString()} more educators`}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

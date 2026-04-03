@@ -1011,6 +1011,17 @@ a:hover {
   overflow-x: auto;
 }
 
+.scatterplot-auto-load-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 56px;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .salary-finder-stats {
   gap: 12px;
   margin-bottom: 14px;
