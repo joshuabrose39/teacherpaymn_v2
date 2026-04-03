@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/teacherp/dev/educator_salary_site_v2
+    - /bin/mkdir -p "$DEPLOYPATH"
+    - /usr/bin/rsync -av --delete --exclude=".git" --exclude=".cpanel.yml" ./ "$DEPLOYPATH"/
