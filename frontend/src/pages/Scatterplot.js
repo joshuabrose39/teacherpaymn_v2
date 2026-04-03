@@ -148,6 +148,7 @@ export default function Scatterplot() {
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'contract_salary', direction: 'desc' });
+  const isInitialTableLoad = tableLoading && tableResults.length === 0;
   const [pendingTableQuery, setPendingTableQuery] = useState('');
   const [loadedTableQuery, setLoadedTableQuery] = useState('');
   const [tableVisible, setTableVisible] = useState(false);
@@ -772,7 +773,7 @@ export default function Scatterplot() {
             <div className="card-header">
               <div>
                 <h2 className="card-title">{totalCount.toLocaleString()} Educators Found</h2>
-                {!tableLoading && tableResults.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
+                {!isInitialTableLoad && tableResults.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
               </div>
             </div>
             <div className="card-body">
@@ -782,7 +783,7 @@ export default function Scatterplot() {
                     Scroll a little farther to load the educator table.
                   </p>
                 </div>
-              ) : tableLoading ? (
+              ) : isInitialTableLoad ? (
                 <div className="empty-chart-message">
                   <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading educator table...</p>
                 </div>

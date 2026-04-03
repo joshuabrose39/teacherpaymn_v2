@@ -253,6 +253,7 @@ export default function SalaryFinder() {
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState(null);
   const [histogramKeyPulse, setHistogramKeyPulse] = useState(false);
+  const isInitialTableLoad = tableLoading && results.length === 0;
 
   // Sorting configuration for the educator table.  By default sort
   // descending on contract salary.  Changing the sort on a column
@@ -1096,7 +1097,7 @@ export default function SalaryFinder() {
                 <div className="card-header">
                   <div>
                     <h2 className="card-title">{totalCount} Educators Found</h2>
-                {!tableLoading && results.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
+                {!isInitialTableLoad && results.length === 0 && <div className="card-subtitle">No results match your filters.</div>}
                   </div>
                 </div>
                 <div className="card-body">
@@ -1106,7 +1107,7 @@ export default function SalaryFinder() {
                     Scroll a little farther to load the full educator table.
                   </p>
                 </div>
-              ) : tableLoading ? (
+              ) : isInitialTableLoad ? (
                 <div className="empty-chart-message">
                   <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading educator table...</p>
                 </div>

@@ -536,7 +536,11 @@ app.get('/api/school-map', async (req, res) => {
       Object.assign(params, inParams);
     }
     // Execute query
-    const rows = await db.all(sql, params);
+    const rows = await db.all(sql, {
+      ...params,
+      tableLimit: limit,
+      tableOffset: offset,
+    });
     res.json({ results: rows });
   } catch (err) {
     console.error(err);
