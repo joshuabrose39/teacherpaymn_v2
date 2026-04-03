@@ -709,7 +709,11 @@ app.get('/api/scatterplot/chart', async (req, res) => {
                         CAST(education_level_rank AS DECIMAL(10,2)) AS education_level_rank,
                         educator_type, educator_subtype
                  FROM web_salary_scatterplot${whereClause}`;
-    const rows = await db.all(sql, params);
+    const rows = await db.all(sql, {
+      ...params,
+      tableLimit: limit,
+      tableOffset: offset,
+    });
     const salaries = rows
       .map((row) => Number(row.contract_salary))
       .filter((salary) => !Number.isNaN(salary));
@@ -760,7 +764,11 @@ app.get('/api/scatterplot/table', async (req, res) => {
                  FROM web_salary_scatterplot${whereClause}
                  ORDER BY ${NUMERIC_SQL.contractSalary} DESC, file_folder_number ASC
                  LIMIT :tableLimit OFFSET :tableOffset`;
-    const rows = await db.all(sql, params);
+    const rows = await db.all(sql, {
+      ...params,
+      tableLimit: limit,
+      tableOffset: offset,
+    });
     res.json({
       results: rows,
       tooManyToRender: false,
