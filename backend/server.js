@@ -536,11 +536,7 @@ app.get('/api/school-map', async (req, res) => {
       Object.assign(params, inParams);
     }
     // Execute query
-    const rows = await db.all(sql, {
-      ...params,
-      tableLimit: limit,
-      tableOffset: offset,
-    });
+    const rows = await db.all(sql, params);
     res.json({ results: rows });
   } catch (err) {
     console.error(err);
@@ -659,11 +655,7 @@ app.get('/api/scatterplot', async (req, res) => {
                         educator_type, educator_subtype,
                         county_name, district_name, school_name
                  FROM web_salary_scatterplot${whereClause}`;
-    const rows = await db.all(sql, {
-      ...params,
-      tableLimit: limit,
-      tableOffset: offset,
-    });
+    const rows = await db.all(sql, params);
     const salaries = rows
       .map((row) => Number(row.contract_salary))
       .filter((salary) => !Number.isNaN(salary));
@@ -709,11 +701,7 @@ app.get('/api/scatterplot/chart', async (req, res) => {
                         CAST(education_level_rank AS DECIMAL(10,2)) AS education_level_rank,
                         educator_type, educator_subtype
                  FROM web_salary_scatterplot${whereClause}`;
-    const rows = await db.all(sql, {
-      ...params,
-      tableLimit: limit,
-      tableOffset: offset,
-    });
+    const rows = await db.all(sql, params);
     const salaries = rows
       .map((row) => Number(row.contract_salary))
       .filter((salary) => !Number.isNaN(salary));
