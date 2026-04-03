@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import Home from './pages/Home';
-import SchoolMap from './pages/SchoolMap';
-import SalaryFinder from './pages/SalaryFinder';
-import Scatterplot from './pages/Scatterplot';
-import Methodology from './pages/Methodology';
-import AboutProject from './pages/AboutProject';
-import EducatorProfile from './pages/EducatorProfile';
+
+const SchoolMap = lazy(() => import('./pages/SchoolMap'));
+const SalaryFinder = lazy(() => import('./pages/SalaryFinder'));
+const Scatterplot = lazy(() => import('./pages/Scatterplot'));
+const Methodology = lazy(() => import('./pages/Methodology'));
+const AboutProject = lazy(() => import('./pages/AboutProject'));
+const EducatorProfile = lazy(() => import('./pages/EducatorProfile'));
 
 function App() {
   // Define navigation items for both top and sidebar navigation. Icons are simple
@@ -86,20 +87,20 @@ function App() {
         </div>
         {/* Main content area */}
         <main className="main">
-          <Routes>
-            <Route path="/" element={<Home />} />
-          {/* Route for the School Map dashboard.  Use the new component
-              created for the school map. */}
-          <Route path="/school-map" element={<SchoolMap />} />
-            <Route path="/salary-finder" element={<SalaryFinder />} />
-            <Route path="/scatterplot" element={<Scatterplot />} />
-            <Route path="/methodology" element={<Methodology />} />
-            <Route path="/about-project" element={<AboutProject />} />
-            <Route
-              path="/educator/:fileFolderNumber"
-              element={<EducatorProfile />}
-            />
-          </Routes>
+          <Suspense fallback={<div className="card"><div className="card-body"><p>Loading page...</p></div></div>}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/school-map" element={<SchoolMap />} />
+              <Route path="/salary-finder" element={<SalaryFinder />} />
+              <Route path="/scatterplot" element={<Scatterplot />} />
+              <Route path="/methodology" element={<Methodology />} />
+              <Route path="/about-project" element={<AboutProject />} />
+              <Route
+                path="/educator/:fileFolderNumber"
+                element={<EducatorProfile />}
+              />
+            </Routes>
+          </Suspense>
         </main>
       </div>
     </Router>
