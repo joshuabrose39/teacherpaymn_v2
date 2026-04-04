@@ -58,6 +58,21 @@ function formatSalaryTick(value) {
   return `${Math.round(value / 1000)}k`;
 }
 
+function getExperienceTickStep(chartWidth) {
+  if (chartWidth >= 900) return 5;
+  if (chartWidth >= 650) return 10;
+  return 20;
+}
+
+function buildExperienceTicks(domainMax, chartWidth) {
+  const step = getExperienceTickStep(chartWidth);
+  const ticks = [];
+  for (let value = 0; value <= domainMax; value += step) {
+    ticks.push(value);
+  }
+  return ticks;
+}
+
 function getSalaryTickStep(maxValue, chartWidth) {
   if (chartWidth >= 900) return 5000;
   if (chartWidth >= 650) {
@@ -420,8 +435,10 @@ export default function Scatterplot() {
     if (results.length === 0) return [0, 10];
     const min = Math.min(...results.map((r) => r.years_of_experience ?? 0));
     const max = Math.max(...results.map((r) => r.years_of_experience ?? 0));
-    return [Math.floor(min), Math.ceil(max) + 1];
-  }, [results]);
+    const step = getExperienceTickStep(chartWidth);
+    const roundedMax = Math.ceil((Math.ceil(max) + 1) / step) * step;
+    return [Math.floor(min), roundedMax];
+  }, [results, chartWidth]);
   const salaryDomain = React.useMemo(() => {
     if (results.length === 0) return [0, 100000];
     const min = Math.min(...results.map((r) => r.contract_salary ?? 0));
@@ -433,6 +450,10 @@ export default function Scatterplot() {
   const salaryTicks = React.useMemo(
     () => buildSalaryTicks(salaryDomain[1], chartWidth),
     [salaryDomain, chartWidth],
+  );
+  const experienceTicks = React.useMemo(
+    () => buildExperienceTicks(experienceDomain[1], chartWidth),
+    [experienceDomain, chartWidth],
   );
 
   useEffect(() => {
@@ -746,6 +767,9 @@ export default function Scatterplot() {
                             dataKey="years_of_experience"
                             name="Years of Experience"
                             domain={experienceDomain}
+                            ticks={experienceTicks}
+                            interval={0}
+                            minTickGap={0}
                             tickFormatter={(value) => `${value}`}
                             tickMargin={8}
                             label={{
