@@ -673,13 +673,13 @@ export default function Scatterplot() {
                     {!chartLoading && !error && hasLoadedChart && (
                       <div className="card-subtitle">
                         {clustered
-                          ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators. The table below can still be loaded in batches.`
+                          ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators.`
                           : `Each dot represents an educator. ${totalCount.toLocaleString()} Educators Found`}
                       </div>
                     )}
                     {!chartLoading && !error && hasLoadedChart && salaryOutlierCount > 0 && salaryCap != null && (
                       <div className="card-subtitle">
-                        Chart capped at the {formatPercentileLabel(salaryPercentile)}th percentile (${Math.round(salaryCap).toLocaleString()}). {salaryOutlierCount.toLocaleString()} educator{salaryOutlierCount === 1 ? '' : 's'} above that value are excluded from the scatter plot only.
+                        Chart capped at the {formatPercentileLabel(salaryPercentile)}th percentile (${Math.round(salaryCap).toLocaleString()}). {salaryOutlierCount.toLocaleString()} educator{salaryOutlierCount === 1 ? '' : 's'} above that value are excluded from the scatter plot but are included in the table below.
                       </div>
                     )}
                   </div>

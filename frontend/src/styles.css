@@ -952,8 +952,8 @@ a:hover {
 }
 
 .school-map-legend-dot {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   display: inline-block;
   flex: 0 0 auto;
@@ -964,12 +964,8 @@ a:hover {
   border: 2px dashed #183153;
 }
 
-.school-map-legend-dot.center-dot::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 999px;
-  background: #183153;
+.school-map-legend-dot.solid-ring {
+  border: 2px solid #183153;
 }
 
 .school-map-legend-dot.double-ring {

@@ -1042,7 +1042,7 @@ export default function SalaryFinder() {
                     <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary Comparison</h2>
                     {!chartLoading && !error && hasLoadedChart && histogramOutlierCount > 0 && histogramCap != null && (
                       <div className="card-subtitle">
-                        Chart capped at the {formatPercentileLabel(histogramPercentile)}th percentile (${Math.round(histogramCap).toLocaleString()}). {histogramOutlierCount.toLocaleString()} educator{histogramOutlierCount === 1 ? '' : 's'} above that value are excluded from the histogram only.
+                        Chart capped at the {formatPercentileLabel(histogramPercentile)}th percentile (${Math.round(histogramCap).toLocaleString()}). {histogramOutlierCount.toLocaleString()} educator{histogramOutlierCount === 1 ? '' : 's'} above that value are excluded from the histogram but are included in the table below.
                       </div>
                     )}
                   </div>

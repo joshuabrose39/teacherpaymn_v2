@@ -31,10 +31,10 @@ const DISTRICT_TYPE_COLORS = {
 const DISTRICT_TYPE_PATTERNS = {
   'Charter School District': 'dashed-ring',
   'Charter Schools': 'dashed-ring',
-  'Independent School District': 'center-dot',
-  'Independent Districts and Schools': 'center-dot',
-  'Special School District': 'center-dot',
-  'Special Districts and Schools': 'center-dot',
+  'Independent School District': 'solid-ring',
+  'Independent Districts and Schools': 'solid-ring',
+  'Special School District': 'solid-ring',
+  'Special Districts and Schools': 'solid-ring',
   other: 'double-ring',
 };
 
@@ -386,14 +386,13 @@ export default function SchoolMap() {
                                   dashArray="4 4"
                                 />
                               )}
-                              {pattern === 'center-dot' && (
+                              {pattern === 'solid-ring' && (
                                 <CircleMarker
                                   center={center}
-                                  radius={Math.max(radius * 0.28, 3)}
+                                  radius={Math.max(radius - 1, 5)}
                                   color="#183153"
-                                  fillColor="#183153"
-                                  fillOpacity={0.95}
-                                  stroke={false}
+                                  weight={2}
+                                  fillOpacity={0}
                                 />
                               )}
                               {pattern === 'double-ring' && (
