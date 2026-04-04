@@ -14,6 +14,7 @@ function App() {
     { name: 'School Map', path: '/school-map', icon: '🗺️' },
     { name: 'Compare Pay', path: '/salary-finder', icon: '💲' },
     { name: 'Pay vs. Experience', path: '/scatterplot', icon: '📊' },
+    { name: 'Educator Profile', path: '/educator', icon: '👤' },
   ];
   const footerNavItems = [
     { name: 'About the Data', path: '/methodology', icon: '📄' },
@@ -93,6 +94,7 @@ function App() {
               <Route path="/school-map" element={<SchoolMap />} />
               <Route path="/salary-finder" element={<SalaryFinder />} />
               <Route path="/scatterplot" element={<Scatterplot />} />
+              <Route path="/educator" element={<EducatorProfile />} />
               <Route path="/methodology" element={<Methodology />} />
               <Route path="/about-project" element={<AboutProject />} />
               <Route

@@ -88,6 +88,21 @@ export default function EducatorProfile() {
 
   useEffect(() => {
     async function fetchProfile() {
+      if (!fileFolderNumber) {
+        setProfileData({
+          fileFolderNumber: null,
+          schoolYears: [],
+          defaultSchoolYear: '',
+          selectedSchoolYear: '',
+          employments: [],
+          assignments: [],
+          licenses: [],
+        });
+        setSelectedSchoolYear('');
+        setLoading(false);
+        setError(null);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -143,26 +158,36 @@ export default function EducatorProfile() {
               >
                 PELSB Data Reports
               </a>
+              . File Folder Numbers can be found here:{' '}
+              <a
+                href="https://pub.education.mn.gov/licenselookup/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Minnesota Educator License Lookup
+              </a>
               .
             </p>
           </div>
-          <div className="toolbar">
-            <div className="header-field header-field-inline">
-              <label htmlFor="educator-profile-school-year">School Year:</label>
-              <select
-                id="educator-profile-school-year"
-                className="select"
-                value={selectedSchoolYear}
-                onChange={(event) => setSelectedSchoolYear(event.target.value)}
-              >
-                {profileData.schoolYears.map((schoolYear) => (
-                  <option key={schoolYear} value={schoolYear}>
-                    {formatSchoolYearLabel(schoolYear)}
-                  </option>
-                ))}
-              </select>
+          {fileFolderNumber && (
+            <div className="toolbar">
+              <div className="header-field header-field-inline">
+                <label htmlFor="educator-profile-school-year">School Year:</label>
+                <select
+                  id="educator-profile-school-year"
+                  className="select"
+                  value={selectedSchoolYear}
+                  onChange={(event) => setSelectedSchoolYear(event.target.value)}
+                >
+                  {profileData.schoolYears.map((schoolYear) => (
+                    <option key={schoolYear} value={schoolYear}>
+                      {formatSchoolYearLabel(schoolYear)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="card" style={{ marginBottom: '18px' }}>
@@ -195,24 +220,36 @@ export default function EducatorProfile() {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: '18px' }}>
-          <div className="card-body">
-            <div className="profile-summary">
-              {summaryFields.map((field) => (
-                <div className="profile-summary-row" key={field.label}>
-                  <strong>{field.label}:</strong>
-                  <span>{field.value}</span>
+        {fileFolderNumber ? (
+          <>
+            <div className="card" style={{ marginBottom: '18px' }}>
+              <div className="card-body">
+                <div className="profile-summary">
+                  {summaryFields.map((field) => (
+                    <div className="profile-summary-row" key={field.label}>
+                      <strong>{field.label}:</strong>
+                      <span>{field.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            </div>
+
+            <div className="vertical-grid">
+              <RecordListSection title="Employments" rows={profileData.employments} />
+              <RecordListSection title="Assignments" rows={profileData.assignments} />
+              <RecordListSection title="Licenses" rows={profileData.licenses} />
+            </div>
+          </>
+        ) : (
+          <div className="card">
+            <div className="card-body">
+              <p style={{ margin: 0 }}>
+                Enter a File Folder Number above to load an educator profile.
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="vertical-grid">
-          <RecordListSection title="Employments" rows={profileData.employments} />
-          <RecordListSection title="Assignments" rows={profileData.assignments} />
-          <RecordListSection title="Licenses" rows={profileData.licenses} />
-        </div>
+        )}
       </div>
     </div>
   );
