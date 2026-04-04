@@ -3,6 +3,8 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import mysql from 'mysql2/promise';
+import sqlite3 from 'sqlite3';
+import { open as openSqlite } from 'sqlite';
 import { fileURLToPath } from 'url';
 
 // Resolve __dirname in an ES module context.  Using fileURLToPath ensures
@@ -39,6 +41,7 @@ function loadEnvFile(filePath) {
 loadEnvFile(path.join(__dirname, '.env'));
 
 const FRONTEND_DIST_PATH = path.join(__dirname, '..', 'frontend', 'dist');
+const EDUCATOR_PROFILES_DB_PATH = path.join(__dirname, 'db', 'educator_profiles_v2.db');
 const MYSQL_CONFIG = {
   host: process.env.MYSQL_HOST || 'localhost',
   port: Number(process.env.MYSQL_PORT || 3306),
@@ -70,7 +73,10 @@ function createDbFacade(pool) {
 }
 
 const dbPromise = Promise.resolve(createDbFacade(mysqlPool));
-const educatorProfilesDbPromise = dbPromise;
+const educatorProfilesDbPromise = openSqlite({
+  filename: EDUCATOR_PROFILES_DB_PATH,
+  driver: sqlite3.Database,
+});
 
 const app = express();
 app.use(cors());
