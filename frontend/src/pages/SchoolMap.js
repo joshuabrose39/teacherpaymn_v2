@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 // Import components from react-leaflet.  These provide the map,
 // tile layer and marker primitives used to render the school map.
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from 'react-leaflet';
@@ -26,6 +26,16 @@ const DISTRICT_TYPE_COLORS = {
   'Special School District': '#648FFF',
   'Special Districts and Schools': '#648FFF',
   other: '#DC267F',
+};
+
+const DISTRICT_TYPE_PATTERNS = {
+  'Charter School District': 'dashed-ring',
+  'Charter Schools': 'dashed-ring',
+  'Independent School District': 'center-dot',
+  'Independent Districts and Schools': 'center-dot',
+  'Special School District': 'center-dot',
+  'Special Districts and Schools': 'center-dot',
+  other: 'double-ring',
 };
 
 const TWIN_CITIES_CENTER = [44.9537, -93.09];
@@ -133,6 +143,9 @@ export default function SchoolMap() {
   const getCircleColor = (districtType) =>
     DISTRICT_TYPE_COLORS[districtType] || DISTRICT_TYPE_COLORS.other;
 
+  const getCirclePattern = (districtType) =>
+    DISTRICT_TYPE_PATTERNS[districtType] || DISTRICT_TYPE_PATTERNS.other;
+
   // Reset all filters to their defaults and reload the map data.
   const resetFilters = () => {
     setDistrictTypeCategories([]);
@@ -152,9 +165,21 @@ export default function SchoolMap() {
 
   const sizeLegendItems = [250, 1000, 2500];
   const colorLegendItems = [
-    { label: 'Charter Schools', color: DISTRICT_TYPE_COLORS['Charter Schools'] },
-    { label: 'Traditional Public Schools', color: DISTRICT_TYPE_COLORS['Independent Districts and Schools'] },
-    { label: 'All Other District Types', color: DISTRICT_TYPE_COLORS.other },
+    {
+      label: 'Charter Schools',
+      color: DISTRICT_TYPE_COLORS['Charter Schools'],
+      pattern: DISTRICT_TYPE_PATTERNS['Charter Schools'],
+    },
+    {
+      label: 'Traditional Public Schools',
+      color: DISTRICT_TYPE_COLORS['Independent Districts and Schools'],
+      pattern: DISTRICT_TYPE_PATTERNS['Independent Districts and Schools'],
+    },
+    {
+      label: 'All Other District Types',
+      color: DISTRICT_TYPE_COLORS.other,
+      pattern: DISTRICT_TYPE_PATTERNS.other,
+    },
   ];
 
   return (
@@ -281,7 +306,7 @@ export default function SchoolMap() {
                           {colorLegendItems.map((item) => (
                             <div key={item.label} className="school-map-legend-item">
                               <span
-                                className="school-map-legend-dot"
+                                className={`school-map-legend-dot ${item.pattern}`}
                                 style={{ background: item.color }}
                               ></span>
                               <span>{item.label}</span>
@@ -323,28 +348,66 @@ export default function SchoolMap() {
                           attribution="© OpenStreetMap contributors"
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-                        {results.map((school) => (
-                          <CircleMarker
-                            key={`${school.school_number}-${school.district_number}`}
-                            center={[school.latitude, school.longitude]}
-                            radius={getRadius(school.student_enrollment)}
-                            color={getCircleColor(school.district_type_name)}
-                            fillColor={getCircleColor(school.district_type_name)}
-                            fillOpacity={0.6}
-                            stroke={false}
-                          >
-                            <Tooltip direction="top" offset={[0, -4]} opacity={1} className="map-tooltip">
-                              <div>
-                                <strong>{school.school_name}</strong>
-                                {school.district_name && <div>District: {school.district_name}</div>}
-                                <div>Enrollment: {school.student_enrollment?.toLocaleString()}</div>
-                                <div>Median Salary: {school.median_teacher_salary != null ? `$${Math.round(school.median_teacher_salary).toLocaleString()}` : '—'}</div>
-                                <div>Median Experience: {school.median_years_experience != null ? school.median_years_experience.toFixed(1) : '—'} years</div>
-                                <div>Median Education: {school.median_education_level_label || '—'}</div>
-                              </div>
-                            </Tooltip>
-                          </CircleMarker>
-                        ))}
+                        {results.map((school) => {
+                          const radius = getRadius(school.student_enrollment);
+                          const color = getCircleColor(school.district_type_name);
+                          const pattern = getCirclePattern(school.district_type_name);
+                          const markerKey = `${school.school_number}-${school.district_number}`;
+                          const center = [school.latitude, school.longitude];
+
+                          return (
+                            <Fragment key={markerKey}>
+                              <CircleMarker
+                                center={center}
+                                radius={radius}
+                                color={color}
+                                fillColor={color}
+                                fillOpacity={0.6}
+                                stroke={false}
+                              >
+                                <Tooltip direction="top" offset={[0, -4]} opacity={1} className="map-tooltip">
+                                  <div>
+                                    <strong>{school.school_name}</strong>
+                                    {school.district_name && <div>District: {school.district_name}</div>}
+                                    <div>Enrollment: {school.student_enrollment?.toLocaleString()}</div>
+                                    <div>Median Salary: {school.median_teacher_salary != null ? `$${Math.round(school.median_teacher_salary).toLocaleString()}` : '—'}</div>
+                                    <div>Median Experience: {school.median_years_experience != null ? school.median_years_experience.toFixed(1) : '—'} years</div>
+                                    <div>Median Education: {school.median_education_level_label || '—'}</div>
+                                  </div>
+                                </Tooltip>
+                              </CircleMarker>
+                              {pattern === 'dashed-ring' && (
+                                <CircleMarker
+                                  center={center}
+                                  radius={Math.max(radius - 1, 5)}
+                                  color="#183153"
+                                  weight={2}
+                                  fillOpacity={0}
+                                  dashArray="4 4"
+                                />
+                              )}
+                              {pattern === 'center-dot' && (
+                                <CircleMarker
+                                  center={center}
+                                  radius={Math.max(radius * 0.28, 3)}
+                                  color="#183153"
+                                  fillColor="#183153"
+                                  fillOpacity={0.95}
+                                  stroke={false}
+                                />
+                              )}
+                              {pattern === 'double-ring' && (
+                                <CircleMarker
+                                  center={center}
+                                  radius={Math.max(radius - 2, 4)}
+                                  color="#183153"
+                                  weight={2}
+                                  fillOpacity={0}
+                                />
+                              )}
+                            </Fragment>
+                          );
+                        })}
                       </MapContainer>
                     </div>
                   </>

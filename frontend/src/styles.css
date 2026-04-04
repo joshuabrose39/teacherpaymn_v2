@@ -26,6 +26,7 @@
   --shadow: 0 6px 18px rgba(18, 32, 59, 0.08);
   --radius: 14px;
   --radius-sm: 10px;
+  --salary-finder-match-control-width: 18rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -112,28 +113,29 @@ body {
 
 .salary-finder-header-match {
   flex: 0 0 auto;
-  width: auto;
+  width: 100%;
   max-width: none;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, var(--salary-finder-match-control-width)));
+  justify-content: flex-start;
+  align-items: stretch;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
 .salary-finder-header-match .input {
-  min-width: 220px;
-  width: min(100%, 320px);
-  flex: 0 1 320px;
+  min-width: 0;
+  width: 100%;
 }
 
 .salary-finder-header-match .button {
   justify-content: center;
-  flex: 0 0 auto;
+  width: 100%;
 }
 
 .salary-finder-header-match-panel {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 18px;
   flex: 0 0 100%;
   width: 100%;
@@ -146,13 +148,14 @@ body {
 
 .salary-finder-header-match-copy {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  width: 100%;
 }
 
 .salary-finder-header-match-copy p {
   margin: 0;
   color: var(--muted);
-  max-width: 760px;
+  max-width: none;
 }
 
 .salary-finder-header-year {
@@ -433,11 +436,6 @@ a:hover {
 }
 
 @media (max-width: 1100px) {
-  .salary-finder-header-match-panel {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .salary-finder-header-match,
   .salary-finder-header-year {
     align-items: flex-start;
@@ -445,13 +443,14 @@ a:hover {
     width: 100%;
   }
 
-  .salary-finder-header-match .input {
-    min-width: 0;
-    width: min(100%, 320px);
-  }
-
   .salary-finder-header-match {
-    flex-wrap: wrap;
+    grid-template-columns: repeat(2, minmax(0, var(--salary-finder-match-control-width)));
+  }
+}
+
+@media (max-width: 760px) {
+  .salary-finder-header-match {
+    grid-template-columns: minmax(0, var(--salary-finder-match-control-width));
   }
 }
 
@@ -958,6 +957,31 @@ a:hover {
   border-radius: 999px;
   display: inline-block;
   flex: 0 0 auto;
+  position: relative;
+}
+
+.school-map-legend-dot.dashed-ring {
+  border: 2px dashed #183153;
+}
+
+.school-map-legend-dot.center-dot::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: #183153;
+}
+
+.school-map-legend-dot.double-ring {
+  border: 2px solid #183153;
+}
+
+.school-map-legend-dot.double-ring::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 999px;
+  border: 1.5px solid #183153;
 }
 
 .school-map-size-note {
@@ -1345,8 +1369,8 @@ th {
 
 .filter-sidebar-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   margin-bottom: 10px;
 }
@@ -1568,11 +1592,6 @@ th {
 }
 
 @media (max-width: 1400px) {
-  .filter-sidebar-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .filter-sidebar-header .filter-buttons {
     width: 100%;
   }
