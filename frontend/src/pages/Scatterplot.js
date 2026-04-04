@@ -584,7 +584,7 @@ export default function Scatterplot() {
         {/* Desktop layout: filter panel and scatterplot */}
         <div className="row scatterplot-top-row">
           <div className="col col-3 desktop-filter-panel scatterplot-sidebar-column">
-            <div className="scatterplot-sidebar-shell filter-panel-shell">
+            <div className="scatterplot-sidebar-shell filter-panel-shell dashboard-filter-card scatterplot-filter-card">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
@@ -651,123 +651,131 @@ export default function Scatterplot() {
           <div className="col col-9 scatterplot-chart-column">
             {/* Wrap the conditional content in its own container to avoid adjacent JSX elements */}
             <div className="results-wrapper">
-              {chartLoading && <p>Loading chart...</p>}
-              {error && <p style={{ color: 'red' }}>{error}</p>}
-              {!chartLoading && !error && hasLoadedChart && (
-                results.length === 0 ? (
-                  <p>No educators match your filters.</p>
-                ) : (
-                  <div className="card scatterplot-card">
-                    <div className="card-header">
-                      <div>
-                        <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary vs. Experience</h2>
-                        <div className="card-subtitle">
-                          {clustered
-                            ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators. The table below can still be loaded in batches.`
-                            : `Each dot represents an educator. ${totalCount.toLocaleString()} Educators Found`}
-                        </div>
-                        {salaryOutlierCount > 0 && salaryCap != null && (
-                          <div className="card-subtitle">
-                            Chart capped at the {formatPercentileLabel(salaryPercentile)}th percentile (${Math.round(salaryCap).toLocaleString()}). {salaryOutlierCount.toLocaleString()} educator{salaryOutlierCount === 1 ? '' : 's'} above that value are excluded from the scatter plot only.
-                          </div>
-                        )}
+              <div className="card scatterplot-card">
+                <div className="card-header">
+                  <div>
+                    <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary vs. Experience</h2>
+                    {!chartLoading && !error && hasLoadedChart && (
+                      <div className="card-subtitle">
+                        {clustered
+                          ? `Showing ${clusterCount.toLocaleString()} clustered points for ${totalCount.toLocaleString()} educators. The table below can still be loaded in batches.`
+                          : `Each dot represents an educator. ${totalCount.toLocaleString()} Educators Found`}
                       </div>
-                      {!clustered && (
-                        <div className="scatterplot-legend">
-                          <div className="scatterplot-legend-item">
-                            <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#648FFF' }}></span>
-                            <span>Traditional Public</span>
-                          </div>
-                          <div className="scatterplot-legend-item">
-                            <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#FE6100' }}></span>
-                            <span>Charter</span>
-                          </div>
-                          <div className="scatterplot-legend-item">
-                            <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#DC267F' }}></span>
-                            <span>Other</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-body">
-                      <div className="chart-wrap scatterplot-chart-wrap" style={{ height: '520px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ScatterChart margin={{ top: 20, right: 52, left: 34, bottom: 48 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              type="number"
-                              dataKey="years_of_experience"
-                              name="Years of Experience"
-                              domain={experienceDomain}
-                              tickFormatter={(value) => `${value}`}
-                              tickMargin={10}
-                              label={{
-                                value: 'Years of Experience',
-                                position: 'insideBottom',
-                                offset: -16,
-                                style: { fontWeight: 700, fill: 'var(--muted)' },
-                              }}
-                            />
-                            <YAxis
-                              type="number"
-                              dataKey="contract_salary"
-                              name="Contract Salary"
-                              domain={salaryDomain}
-                              ticks={salaryTicks}
-                              width={94}
-                              tickMargin={8}
-                              tickFormatter={formatSalaryTick}
-                              label={{
-                                value: 'Contract Salary',
-                                angle: -90,
-                                position: 'left',
-                                dx: -10,
-                                style: { textAnchor: 'middle', fontWeight: 700, fill: 'var(--muted)' },
-                              }}
-                            />
-                            {!clustered && (
-                              <Tooltip
-                                cursor={{ strokeDasharray: '3 3' }}
-                                formatter={(value, name) => {
-                                  if (name === 'contract_salary') {
-                                    return [`$${Math.round(value).toLocaleString()}`, 'Pay'];
-                                  }
-                                  if (name === 'years_of_experience') {
-                                    return [`${value}`, 'Experience'];
-                                  }
-                                  return [value, name];
-                                }}
-                                content={({ active, payload }) => {
-                                  if (!active || !payload || payload.length === 0) return null;
-                                  const data = payload[0].payload;
-                                  return (
-                                    <div className="custom-tooltip" style={{ background: '#ffffff', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
-                                      <div><strong>File: </strong>{data.file_folder_number}</div>
-                                      <div><strong>Pay: </strong>${Math.round(data.contract_salary).toLocaleString()}</div>
-                                      <div><strong>Experience: </strong>{data.years_of_experience}</div>
-                                      <div><strong>Education: </strong>{data.education_level}</div>
-                                      <div><strong>Educator Type: </strong>{data.educator_type}</div>
-                                      <div><strong>Subtype: </strong>{data.educator_subtype}</div>
-                                    </div>
-                                  );
-                                }}
-                              />
-                            )}
-                            {scatterLayers.map((layer) => (
-                              <Scatter
-                                key={layer.key}
-                                name="Educators"
-                                data={layer.data}
-                                shape={<ScatterPoint />}
-                              />
-                            ))}
-                          </ScatterChart>
-                        </ResponsiveContainer>
+                    )}
+                    {!chartLoading && !error && hasLoadedChart && salaryOutlierCount > 0 && salaryCap != null && (
+                      <div className="card-subtitle">
+                        Chart capped at the {formatPercentileLabel(salaryPercentile)}th percentile (${Math.round(salaryCap).toLocaleString()}). {salaryOutlierCount.toLocaleString()} educator{salaryOutlierCount === 1 ? '' : 's'} above that value are excluded from the scatter plot only.
                       </div>
-                    </div>
+                    )}
                   </div>
-                )
-              )}
+                  {!chartLoading && !error && hasLoadedChart && !clustered && (
+                    <div className="scatterplot-legend">
+                      <div className="scatterplot-legend-item">
+                        <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#648FFF' }}></span>
+                        <span>Traditional Public</span>
+                      </div>
+                      <div className="scatterplot-legend-item">
+                        <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#FE6100' }}></span>
+                        <span>Charter</span>
+                      </div>
+                      <div className="scatterplot-legend-item">
+                        <span className="scatterplot-legend-swatch" style={{ backgroundColor: '#DC267F' }}></span>
+                        <span>Other</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="card-body">
+                  {chartLoading || !hasLoadedChart ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading chart...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0', color: 'red' }}>{error}</p>
+                    </div>
+                  ) : results.length === 0 ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0' }}>No educators match your filters.</p>
+                    </div>
+                  ) : (
+                    <div className="chart-wrap scatterplot-chart-wrap" style={{ height: '520px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ScatterChart margin={{ top: 12, right: 10, left: 16, bottom: 18 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            type="number"
+                            dataKey="years_of_experience"
+                            name="Years of Experience"
+                            domain={experienceDomain}
+                            tickFormatter={(value) => `${value}`}
+                            tickMargin={8}
+                            label={{
+                              value: 'Years of Experience',
+                              position: 'insideBottom',
+                              offset: -10,
+                              style: { fontWeight: 700, fill: 'var(--muted)' },
+                            }}
+                          />
+                          <YAxis
+                            type="number"
+                            dataKey="contract_salary"
+                            name="Contract Salary"
+                            domain={salaryDomain}
+                            ticks={salaryTicks}
+                            width={72}
+                            tickMargin={6}
+                            tickFormatter={formatSalaryTick}
+                            label={{
+                              value: 'Contract Salary',
+                              angle: -90,
+                              position: 'left',
+                              dx: -4,
+                              style: { textAnchor: 'middle', fontWeight: 700, fill: 'var(--muted)' },
+                            }}
+                          />
+                          {!clustered && (
+                            <Tooltip
+                              cursor={{ strokeDasharray: '3 3' }}
+                              formatter={(value, name) => {
+                                if (name === 'contract_salary') {
+                                  return [`$${Math.round(value).toLocaleString()}`, 'Pay'];
+                                }
+                                if (name === 'years_of_experience') {
+                                  return [`${value}`, 'Experience'];
+                                }
+                                return [value, name];
+                              }}
+                              content={({ active, payload }) => {
+                                if (!active || !payload || payload.length === 0) return null;
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="custom-tooltip" style={{ background: '#ffffff', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                                    <div><strong>File: </strong>{data.file_folder_number}</div>
+                                    <div><strong>Pay: </strong>${Math.round(data.contract_salary).toLocaleString()}</div>
+                                    <div><strong>Experience: </strong>{data.years_of_experience}</div>
+                                    <div><strong>Education: </strong>{data.education_level}</div>
+                                    <div><strong>Educator Type: </strong>{data.educator_type}</div>
+                                    <div><strong>Subtype: </strong>{data.educator_subtype}</div>
+                                  </div>
+                                );
+                              }}
+                            />
+                          )}
+                          {scatterLayers.map((layer) => (
+                            <Scatter
+                              key={layer.key}
+                              name="Educators"
+                              data={layer.data}
+                              shape={<ScatterPoint />}
+                            />
+                          ))}
+                        </ScatterChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

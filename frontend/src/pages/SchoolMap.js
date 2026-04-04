@@ -217,9 +217,9 @@ export default function SchoolMap() {
           </div>
         </div>
         {/* Desktop layout: filter panel and map side by side */}
-        <div className="row">
-          <div className="col col-3 desktop-filter-panel">
-            <div className="filter-sidebar-shell filter-panel-shell">
+        <div className="row school-map-top-row">
+          <div className="col col-3 desktop-filter-panel school-map-sidebar-column">
+            <div className="filter-sidebar-shell filter-panel-shell dashboard-filter-card school-map-filter-card">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
@@ -231,7 +231,7 @@ export default function SchoolMap() {
                   </button>
                 </div>
               </div>
-              <div className="filter-panel">
+              <div className="filter-panel school-map-filter-panel">
                 <CheckboxMultiSelect
                   label="District Type Category"
                   options={DISTRICT_TYPE_CATEGORY_OPTIONS}
@@ -257,90 +257,100 @@ export default function SchoolMap() {
               </div>
             </div>
           </div>
-          <div className="col col-9">
-            {loading && <p>Loading data...</p>}
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {!loading && !error && (
-              results.length === 0 ? (
-                <p>No schools match your filters.</p>
-              ) : (
-                <>
-                  <div className="school-map-legend-bar">
-                    <div className="school-map-legend-group">
-                      <div className="school-map-legend-title">District type</div>
-                      <div className="school-map-legend-items">
-                        {colorLegendItems.map((item) => (
-                          <div key={item.label} className="school-map-legend-item">
-                            <span
-                              className="school-map-legend-dot"
-                              style={{ background: item.color }}
-                            ></span>
-                            <span>{item.label}</span>
-                          </div>
+          <div className="col col-9 school-map-chart-column">
+            <div className="card school-map-card">
+              <div className="card-body school-map-card-body">
+                {loading ? (
+                  <div className="empty-chart-message chart-panel-message">
+                    <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading data...</p>
+                  </div>
+                ) : error ? (
+                  <div className="empty-chart-message chart-panel-message">
+                    <p style={{ textAlign: 'center', margin: '2rem 0', color: 'red' }}>{error}</p>
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="empty-chart-message chart-panel-message">
+                    <p style={{ textAlign: 'center', margin: '2rem 0' }}>No schools match your filters.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="school-map-legend-bar">
+                      <div className="school-map-legend-group">
+                        <div className="school-map-legend-title">District type</div>
+                        <div className="school-map-legend-items">
+                          {colorLegendItems.map((item) => (
+                            <div key={item.label} className="school-map-legend-item">
+                              <span
+                                className="school-map-legend-dot"
+                                style={{ background: item.color }}
+                              ></span>
+                              <span>{item.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="school-map-legend-group">
+                        <div className="school-map-legend-title">Circle size</div>
+                        <div className="school-map-size-note">Student enrollment</div>
+                        <div className="school-map-size-items">
+                          {sizeLegendItems.map((value) => {
+                            const radius = getRadius(value);
+                            return (
+                              <div key={value} className="school-map-size-item">
+                                <div
+                                  className="school-map-size-circle"
+                                  style={{
+                                    width: `${radius * 2}px`,
+                                    height: `${radius * 2}px`,
+                                  }}
+                                ></div>
+                                <div>{value.toLocaleString()}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="school-map-map-wrap">
+                      <MapContainer center={TWIN_CITIES_CENTER} zoom={TWIN_CITIES_ZOOM} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                        {/* Use an open source tile layer from OpenStreetMap.  Attribution is included per terms. */}
+                        <TileLayer
+                          /*
+                           * Use a plain text attribution.  HTML tags are not allowed in JSX
+                           * string literals because React treats namespace prefixes (e.g. <a>)
+                           * as invalid JSX.  Including them here caused a compile error.
+                           */
+                          attribution="© OpenStreetMap contributors"
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        {results.map((school) => (
+                          <CircleMarker
+                            key={`${school.school_number}-${school.district_number}`}
+                            center={[school.latitude, school.longitude]}
+                            radius={getRadius(school.student_enrollment)}
+                            color={getCircleColor(school.district_type_name)}
+                            fillColor={getCircleColor(school.district_type_name)}
+                            fillOpacity={0.6}
+                            stroke={false}
+                          >
+                            <Tooltip direction="top" offset={[0, -4]} opacity={1} className="map-tooltip">
+                              <div>
+                                <strong>{school.school_name}</strong>
+                                {school.district_name && <div>District: {school.district_name}</div>}
+                                <div>Enrollment: {school.student_enrollment?.toLocaleString()}</div>
+                                <div>Median Salary: {school.median_teacher_salary != null ? `$${Math.round(school.median_teacher_salary).toLocaleString()}` : '—'}</div>
+                                <div>Median Experience: {school.median_years_experience != null ? school.median_years_experience.toFixed(1) : '—'} years</div>
+                                <div>Median Education: {school.median_education_level_label || '—'}</div>
+                              </div>
+                            </Tooltip>
+                          </CircleMarker>
                         ))}
-                      </div>
+                      </MapContainer>
                     </div>
-                    <div className="school-map-legend-group">
-                      <div className="school-map-legend-title">Circle size</div>
-                      <div className="school-map-size-note">Student enrollment</div>
-                      <div className="school-map-size-items">
-                        {sizeLegendItems.map((value) => {
-                          const radius = getRadius(value);
-                          return (
-                            <div key={value} className="school-map-size-item">
-                              <div
-                                className="school-map-size-circle"
-                                style={{
-                                  width: `${radius * 2}px`,
-                                  height: `${radius * 2}px`,
-                                }}
-                              ></div>
-                              <div>{value.toLocaleString()}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ height: '600px', width: '100%' }}>
-                    <MapContainer center={TWIN_CITIES_CENTER} zoom={TWIN_CITIES_ZOOM} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
-                      {/* Use an open source tile layer from OpenStreetMap.  Attribution is included per terms. */}
-                      <TileLayer
-                        /*
-                         * Use a plain text attribution.  HTML tags are not allowed in JSX
-                         * string literals because React treats namespace prefixes (e.g. <a>)
-                         * as invalid JSX.  Including them here caused a compile error.
-                         */
-                        attribution="© OpenStreetMap contributors"
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      {results.map((school) => (
-                        <CircleMarker
-                          key={`${school.school_number}-${school.district_number}`}
-                          center={[school.latitude, school.longitude]}
-                          radius={getRadius(school.student_enrollment)}
-                          color={getCircleColor(school.district_type_name)}
-                          fillColor={getCircleColor(school.district_type_name)}
-                          fillOpacity={0.6}
-                          stroke={false}
-                        >
-                          <Tooltip direction="top" offset={[0, -4]} opacity={1} className="map-tooltip">
-                            <div>
-                              <strong>{school.school_name}</strong>
-                              {school.district_name && <div>District: {school.district_name}</div>}
-                              <div>Enrollment: {school.student_enrollment?.toLocaleString()}</div>
-                              <div>Median Salary: {school.median_teacher_salary != null ? `$${Math.round(school.median_teacher_salary).toLocaleString()}` : '—'}</div>
-                              <div>Median Experience: {school.median_years_experience != null ? school.median_years_experience.toFixed(1) : '—'} years</div>
-                              <div>Median Education: {school.median_education_level_label || '—'}</div>
-                            </div>
-                          </Tooltip>
-                        </CircleMarker>
-                      ))}
-                    </MapContainer>
-                  </div>
-                </>
-              )
-            )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

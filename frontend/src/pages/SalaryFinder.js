@@ -192,6 +192,7 @@ export default function SalaryFinder() {
   const [tableVisible, setTableVisible] = useState(false);
   const tableSectionRef = useRef(null);
   const tableLoadMoreRef = useRef(null);
+  const histogramChartRef = useRef(null);
   const requestSequenceRef = useRef(0);
 
   // Reset all filters to their defaults.  Clears all multi-select
@@ -254,9 +255,7 @@ export default function SalaryFinder() {
   const [error, setError] = useState(null);
   const [histogramKeyPulse, setHistogramKeyPulse] = useState(false);
   const [hasLoadedChart, setHasLoadedChart] = useState(false);
-  const [isMobileHistogram, setIsMobileHistogram] = useState(() => (
-    typeof window !== 'undefined' ? window.innerWidth <= 640 : false
-  ));
+  const [histogramChartWidth, setHistogramChartWidth] = useState(0);
   const isInitialTableLoad = tableLoading && results.length === 0;
 
   // Sorting configuration for the educator table.  By default sort
@@ -307,12 +306,16 @@ export default function SalaryFinder() {
   const xAxisTicks = React.useMemo(() => {
     if (!histogram || histogram.length === 0) return [];
     const allTicks = histogram.map((bin) => bin.start);
-    if (!isMobileHistogram || allTicks.length <= 5) {
+    const availableWidth = histogramChartWidth || (typeof window !== 'undefined' ? window.innerWidth : 0);
+    const maxTickCount = availableWidth > 0
+      ? Math.max(2, Math.floor(availableWidth / 80))
+      : allTicks.length;
+
+    if (allTicks.length <= maxTickCount) {
       return allTicks;
     }
 
-    const targetTickCount = 4;
-    const step = Math.ceil((allTicks.length - 1) / (targetTickCount - 1));
+    const step = Math.max(1, Math.ceil((allTicks.length - 1) / Math.max(1, maxTickCount - 1)));
     const reducedTicks = allTicks.filter((_, index) => (
       index === 0
       || index === allTicks.length - 1
@@ -320,21 +323,23 @@ export default function SalaryFinder() {
     ));
 
     return [...new Set(reducedTicks)].sort((a, b) => a - b);
-  }, [histogram, isMobileHistogram]);
+  }, [histogram, histogramChartWidth]);
   const formatSalaryTick = (value) => `${Math.round(value / 1000)}k`;
   const histogramUpperBound = histogram.length > 0 ? histogram[histogram.length - 1].end : null;
   const showYourSalaryLine = matchedEducatorSalary != null && histogramUpperBound != null && matchedEducatorSalary <= histogramUpperBound;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    const node = histogramChartRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
 
-    const updateIsMobileHistogram = () => {
-      setIsMobileHistogram(window.innerWidth <= 640);
-    };
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setHistogramChartWidth(entry.contentRect.width);
+    });
 
-    updateIsMobileHistogram();
-    window.addEventListener('resize', updateIsMobileHistogram);
-    return () => window.removeEventListener('resize', updateIsMobileHistogram);
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -925,7 +930,7 @@ export default function SalaryFinder() {
         {/* Desktop layout: filters and content */}
         <div className="row salary-finder-top-row">
           <div className="col col-3 desktop-filter-panel salary-finder-sidebar-column">
-            <div className="filter-sidebar-shell filter-panel-shell">
+            <div className="filter-sidebar-shell filter-panel-shell dashboard-filter-card salary-finder-filter-card">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
@@ -1015,112 +1020,116 @@ export default function SalaryFinder() {
             </div>
           </div>
           <div className="col col-9 salary-finder-chart-column">
-            {chartLoading && <p>Loading chart...</p>}
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {!chartLoading && !error && hasLoadedChart && (
-              <div className="vertical-grid salary-finder-chart-grid">
-                <div className="card salary-finder-histogram-card">
-                  <div className="card-header">
-                    <div>
-                      <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary Comparison</h2>
-                      {histogramOutlierCount > 0 && histogramCap != null && (
-                        <div className="card-subtitle">
-                          Chart capped at the {formatPercentileLabel(histogramPercentile)}th percentile (${Math.round(histogramCap).toLocaleString()}). {histogramOutlierCount.toLocaleString()} educator{histogramOutlierCount === 1 ? '' : 's'} above that value are excluded from the histogram only.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="card-body salary-finder-histogram-body">
-                    {totalCount < 10 ? (
-                      <div className="empty-chart-message">
-                        <p style={{ textAlign: 'center', margin: '2rem 0' }}>
-                          Less than 10 results found, please broaden your filters to display the graph.
-                        </p>
+            <div className="vertical-grid salary-finder-chart-grid">
+              <div className="card salary-finder-histogram-card">
+                <div className="card-header">
+                  <div>
+                    <h2 className="card-title">{formatSchoolYearLabel(selectedSchoolYear)} Salary Comparison</h2>
+                    {!chartLoading && !error && hasLoadedChart && histogramOutlierCount > 0 && histogramCap != null && (
+                      <div className="card-subtitle">
+                        Chart capped at the {formatPercentileLabel(histogramPercentile)}th percentile (${Math.round(histogramCap).toLocaleString()}). {histogramOutlierCount.toLocaleString()} educator{histogramOutlierCount === 1 ? '' : 's'} above that value are excluded from the histogram only.
                       </div>
-                    ) : (
-                      <>
-                        <div className={`salary-finder-key-panel${histogramKeyPulse ? ' is-updating' : ''}`}>
-                          <div className="salary-finder-key-items">
-                            <div className="salary-finder-key-item">
-                              <span className="salary-finder-key-swatch salary-finder-key-swatch-count">#</span>
-                              <span className="salary-finder-key-label">Educators Found:</span>
-                              <span className="salary-finder-key-value">{totalCount.toLocaleString()}</span>
-                            </div>
-                            <div className="salary-finder-key-item">
-                              <span className="salary-finder-key-swatch salary-finder-key-swatch-median"></span>
-                              <span className="salary-finder-key-label">Median Salary:</span>
-                              <span className="salary-finder-key-value">${Math.round(medianSalary).toLocaleString()}</span>
-                            </div>
-                            {matchedEducatorSalary != null && (
-                              <div className="salary-finder-key-item">
-                                <span className="salary-finder-key-swatch salary-finder-key-swatch-yours"></span>
-                                <span className="salary-finder-key-label">Your Salary:</span>
-                                <span className="salary-finder-key-value">
-                                  ${Math.round(matchedEducatorSalary).toLocaleString()}
-                                  {!showYourSalaryLine && histogramUpperBound != null ? ' (above chart range)' : ''}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="chart-wrap salary-finder-chart-wrap">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={histogram} margin={{ top: 12, right: 10, left: 16, bottom: 18 }} barCategoryGap="16%">
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis
-                                type="number"
-                                dataKey="start"
-                                domain={xAxisDomain}
-                                ticks={xAxisTicks}
-                                tickFormatter={formatSalaryTick}
-                                interval={0}
-                                minTickGap={0}
-                                label={{
-                                  value: 'Contract Salary',
-                                  position: 'insideBottom',
-                                  offset: -10,
-                                  style: { fontWeight: 700, fill: 'var(--muted)' },
-                                }}
-                              />
-                              <YAxis
-                                width={56}
-                                label={{
-                                  value: 'Educators',
-                                  angle: -90,
-                                  position: 'left',
-                                  dx: -4,
-                                  style: { textAnchor: 'middle', fontWeight: 700, fill: 'var(--muted)' },
-                                }}
-                              />
-                              <Tooltip
-                                formatter={(value) => value}
-                                labelFormatter={(label) => `Salary ≥ $${label.toLocaleString()}`}
-                              />
-                              <Bar dataKey="count" fill="#8884d8" />
-                              <ReferenceLine
-                                x={medianSalary}
-                                stroke="#cc8a8a"
-                                strokeWidth={3}
-                                ifOverflow="extendDomain"
-                              />
-                              {showYourSalaryLine && (
-                                <ReferenceLine
-                                  x={matchedEducatorSalary}
-                                  stroke="#66a6b0"
-                                  strokeWidth={3}
-                                  strokeDasharray="6 4"
-                                  ifOverflow="extendDomain"
-                                />
-                              )}
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </>
                     )}
                   </div>
                 </div>
+                <div className="card-body salary-finder-histogram-body">
+                  {chartLoading || !hasLoadedChart ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0' }}>Loading chart...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0', color: 'red' }}>{error}</p>
+                    </div>
+                  ) : totalCount < 10 ? (
+                    <div className="empty-chart-message chart-panel-message">
+                      <p style={{ textAlign: 'center', margin: '2rem 0' }}>
+                        Less than 10 results found, please broaden your filters to display the graph.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={`salary-finder-key-panel${histogramKeyPulse ? ' is-updating' : ''}`}>
+                        <div className="salary-finder-key-items">
+                          <div className="salary-finder-key-item">
+                            <span className="salary-finder-key-swatch salary-finder-key-swatch-count">#</span>
+                            <span className="salary-finder-key-label">Educators Found:</span>
+                            <span className="salary-finder-key-value">{totalCount.toLocaleString()}</span>
+                          </div>
+                          <div className="salary-finder-key-item">
+                            <span className="salary-finder-key-swatch salary-finder-key-swatch-median"></span>
+                            <span className="salary-finder-key-label">Median Salary:</span>
+                            <span className="salary-finder-key-value">${Math.round(medianSalary).toLocaleString()}</span>
+                          </div>
+                          {matchedEducatorSalary != null && (
+                            <div className="salary-finder-key-item">
+                              <span className="salary-finder-key-swatch salary-finder-key-swatch-yours"></span>
+                              <span className="salary-finder-key-label">Your Salary:</span>
+                              <span className="salary-finder-key-value">
+                                ${Math.round(matchedEducatorSalary).toLocaleString()}
+                                {!showYourSalaryLine && histogramUpperBound != null ? ' (above chart range)' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="chart-wrap salary-finder-chart-wrap" ref={histogramChartRef}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={histogram} margin={{ top: 12, right: 10, left: 16, bottom: 18 }} barCategoryGap="16%">
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                              type="number"
+                              dataKey="start"
+                              domain={xAxisDomain}
+                              ticks={xAxisTicks}
+                              tickFormatter={formatSalaryTick}
+                              interval={0}
+                              minTickGap={0}
+                              label={{
+                                value: 'Contract Salary',
+                                position: 'insideBottom',
+                                offset: -10,
+                                style: { fontWeight: 700, fill: 'var(--muted)' },
+                              }}
+                            />
+                            <YAxis
+                              width={56}
+                              label={{
+                                value: 'Educators',
+                                angle: -90,
+                                position: 'left',
+                                dx: -4,
+                                style: { textAnchor: 'middle', fontWeight: 700, fill: 'var(--muted)' },
+                              }}
+                            />
+                            <Tooltip
+                              formatter={(value) => value}
+                              labelFormatter={(label) => `Salary ≥ $${label.toLocaleString()}`}
+                            />
+                            <Bar dataKey="count" fill="#8884d8" />
+                            <ReferenceLine
+                              x={medianSalary}
+                              stroke="#cc8a8a"
+                              strokeWidth={3}
+                              ifOverflow="extendDomain"
+                            />
+                            {showYourSalaryLine && (
+                              <ReferenceLine
+                                x={matchedEducatorSalary}
+                                stroke="#66a6b0"
+                                strokeWidth={3}
+                                strokeDasharray="6 4"
+                                ifOverflow="extendDomain"
+                              />
+                            )}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
         {!chartLoading && !error && hasLoadedChart && (
