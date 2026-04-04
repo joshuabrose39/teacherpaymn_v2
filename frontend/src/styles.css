@@ -196,7 +196,7 @@ body {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 400;
   transition: 0.15s ease;
   text-decoration: none;
 }
@@ -1648,15 +1648,18 @@ th {
 }
 
 .part-time-filter-label {
-  display: block;
-  margin-bottom: 0.3rem;
+  display: inline;
+  margin-bottom: 0;
   font-weight: bold;
 }
 
 .part-time-filter-checkbox-row {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 0;
   cursor: pointer;
+  max-width: 100%;
 }
 
 .part-time-filter-checkbox-row input {
