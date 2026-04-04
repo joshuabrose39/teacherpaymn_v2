@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiUrl } from '../utils/api';
 
 function formatSchoolYearLabel(value) {
@@ -65,7 +65,10 @@ function RecordListSection({ title, rows }) {
 
 export default function EducatorProfile() {
   const { fileFolderNumber } = useParams();
+  const navigate = useNavigate();
   const [selectedSchoolYear, setSelectedSchoolYear] = useState('');
+  const [lookupInput, setLookupInput] = useState(fileFolderNumber || '');
+  const [lookupError, setLookupError] = useState(null);
   const [profileData, setProfileData] = useState({
     fileFolderNumber: null,
     schoolYears: [],
@@ -77,6 +80,11 @@ export default function EducatorProfile() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLookupInput(fileFolderNumber || '');
+    setLookupError(null);
+  }, [fileFolderNumber]);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -104,6 +112,18 @@ export default function EducatorProfile() {
     { label: 'School Year', value: formatSchoolYearLabel(profileData.selectedSchoolYear) || '—' },
     { label: 'File Folder Number', value: profileData.fileFolderNumber || fileFolderNumber || '—' },
   ], [fileFolderNumber, profileData.fileFolderNumber, profileData.selectedSchoolYear]);
+
+  const handleLookupSubmit = (event) => {
+    event.preventDefault();
+    const normalizedValue = String(lookupInput || '').trim();
+    if (!/^\d+$/.test(normalizedValue)) {
+      setLookupError('Enter a valid numeric file folder number.');
+      return;
+    }
+    setLookupError(null);
+    if (normalizedValue === String(fileFolderNumber || '')) return;
+    navigate(`/educator/${normalizedValue}`);
+  };
 
   if (loading) return <p>Loading educator profile...</p>;
   if (error) return <p style={{ color: 'red' }}>{error}</p>;
@@ -142,6 +162,36 @@ export default function EducatorProfile() {
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: '18px' }}>
+          <div className="card-body">
+            <form className="educator-profile-lookup" onSubmit={handleLookupSubmit}>
+              <label htmlFor="educator-profile-lookup-input">File Folder Number</label>
+              <div className="educator-profile-lookup-controls">
+                <input
+                  id="educator-profile-lookup-input"
+                  type="text"
+                  className="input"
+                  value={lookupInput}
+                  onChange={(event) => setLookupInput(event.target.value)}
+                  placeholder="Enter file folder number"
+                  aria-describedby={lookupError ? 'educator-profile-lookup-error' : undefined}
+                />
+                <button type="submit" className="button primary">
+                  Load Profile
+                </button>
+              </div>
+              {lookupError && (
+                <div
+                  id="educator-profile-lookup-error"
+                  className="educator-profile-lookup-error"
+                >
+                  {lookupError}
+                </div>
+              )}
+            </form>
           </div>
         </div>
 

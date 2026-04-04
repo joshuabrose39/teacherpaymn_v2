@@ -26,7 +26,7 @@
   --shadow: 0 6px 18px rgba(18, 32, 59, 0.08);
   --radius: 14px;
   --radius-sm: 10px;
-  --salary-finder-match-control-width: 15rem;
+  --salary-finder-match-control-width: 13.5rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -112,7 +112,6 @@ body {
 }
 
 .salary-finder-header-match {
-  flex: 0 0 auto;
   width: 100%;
   display: grid;
   grid-template-columns: repeat(2, var(--salary-finder-match-control-width));
@@ -125,6 +124,7 @@ body {
   min-width: var(--salary-finder-match-control-width);
   width: var(--salary-finder-match-control-width);
   max-width: var(--salary-finder-match-control-width);
+  box-sizing: border-box;
 }
 
 .salary-finder-header-match .button {
@@ -133,6 +133,7 @@ body {
   width: var(--salary-finder-match-control-width);
   max-width: var(--salary-finder-match-control-width);
   padding-inline: 12px;
+  box-sizing: border-box;
 }
 
 .salary-finder-header-match-panel {
@@ -1007,6 +1008,37 @@ a:hover {
 .profile-summary-row,
 .profile-field-row {
   line-height: 1.5;
+}
+
+.educator-profile-lookup {
+  display: grid;
+  gap: 10px;
+}
+
+.educator-profile-lookup label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.educator-profile-lookup-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.educator-profile-lookup-controls .input {
+  width: min(100%, 260px);
+}
+
+.educator-profile-lookup-controls .button {
+  justify-content: center;
+}
+
+.educator-profile-lookup-error {
+  color: var(--danger);
+  font-size: 0.92rem;
 }
 
 .profile-summary-row {
