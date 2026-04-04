@@ -116,14 +116,18 @@ body {
   max-width: none;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .salary-finder-header-match .input {
   min-width: 220px;
+  width: min(100%, 320px);
+  flex: 0 1 320px;
 }
 
 .salary-finder-header-match .button {
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 .salary-finder-header-match-panel {
@@ -443,7 +447,7 @@ a:hover {
 
   .salary-finder-header-match .input {
     min-width: 0;
-    width: 100%;
+    width: min(100%, 320px);
   }
 
   .salary-finder-header-match {
@@ -656,12 +660,12 @@ a:hover {
   font-size: clamp(2.1rem, 4vw, 3.4rem);
   line-height: 1;
   letter-spacing: -0.04em;
-  max-width: 760px;
+  max-width: none;
 }
 
 .home-lead {
   margin: 16px 0 0;
-  max-width: 760px;
+  max-width: none;
   font-size: 1.08rem;
   line-height: 1.7;
   color: var(--muted);
@@ -689,15 +693,6 @@ a:hover {
   gap: 16px;
 }
 
-.home-feature-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.home-feature-link:hover {
-  text-decoration: none;
-}
-
 .home-feature-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 250px;
@@ -710,12 +705,6 @@ a:hover {
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.home-feature-link:hover .home-feature-card {
-  transform: translateY(-2px);
-  border-color: #bfd0ef;
-  box-shadow: 0 10px 24px rgba(18, 32, 59, 0.09);
-}
-
 .home-feature-content {
   min-width: 0;
 }
@@ -723,6 +712,56 @@ a:hover {
 .home-feature-media {
   display: flex;
   justify-content: flex-end;
+}
+
+.home-feature-image-link {
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 14px;
+}
+
+.home-feature-title-link {
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.home-feature-title-link:visited {
+  color: #3f4f87;
+}
+
+.home-feature-title-link:hover,
+.home-feature-image-link:hover .home-feature-preview {
+  text-decoration: none;
+}
+
+.home-feature-title-link:hover {
+  color: var(--primary);
+}
+
+.home-feature-title-link.active {
+  color: var(--primary);
+}
+
+.home-feature-title-link:active,
+.home-feature-image-link:active .home-feature-preview {
+  transform: translateY(1px);
+}
+
+.home-feature-title-link:focus-visible,
+.home-feature-image-link:focus-visible {
+  outline: 3px solid rgba(53, 92, 187, 0.28);
+  outline-offset: 4px;
+}
+
+.home-feature-image-link:hover .home-feature-preview,
+.home-feature-image-link.active .home-feature-preview,
+.home-feature-image-link:focus-visible .home-feature-preview {
+  border-color: #bfd0ef;
+  box-shadow: 0 10px 24px rgba(18, 32, 59, 0.09);
+  transform: translateY(-2px);
 }
 
 .home-feature-preview {
@@ -734,6 +773,7 @@ a:hover {
   overflow: hidden;
   background: #f5f8fc;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .home-preview-image img {
@@ -958,6 +998,12 @@ a:hover {
   gap: 8px;
 }
 
+.about-author-content::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 .about-author-photo-wrap {
   margin-bottom: 18px;
 }
@@ -968,6 +1014,26 @@ a:hover {
   border-radius: 18px;
   border: 1px solid #d9e1ec;
   box-shadow: 0 10px 28px rgba(18, 32, 59, 0.12);
+}
+
+@media (min-width: 768px) {
+  .about-author-photo-wrap {
+    float: right;
+    width: min(320px, 38%);
+    margin: 0 0 18px 24px;
+  }
+
+  .about-author-photo {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .about-author-photo-wrap {
+    float: none;
+    width: auto;
+    margin: 0 0 18px;
+  }
 }
 
 .salary-finder-chart-wrap {
@@ -1298,6 +1364,18 @@ th {
 
 .filter-sidebar-header .filter-buttons {
   margin-top: 0;
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px !important;
+}
+
+.filter-sidebar-header .filter-buttons .button {
+  min-width: 0;
+  width: 100%;
+  justify-content: center;
+  padding-inline: 10px;
 }
 
 .filter-panel-shell > .filter-panel {
@@ -1501,6 +1579,12 @@ th {
 
   .filter-sidebar-header .filter-buttons .button {
     flex: 1 1 0;
+  }
+}
+
+@media (max-width: 1180px) {
+  .filter-sidebar-header .filter-buttons {
+    grid-template-columns: 1fr;
   }
 }
 
