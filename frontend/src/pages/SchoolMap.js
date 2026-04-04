@@ -384,6 +384,7 @@ export default function SchoolMap() {
                                   weight={2}
                                   fillOpacity={0}
                                   dashArray="4 4"
+                                  interactive={false}
                                 />
                               )}
                               {pattern === 'solid-ring' && (
@@ -393,6 +394,7 @@ export default function SchoolMap() {
                                   color="#183153"
                                   weight={2}
                                   fillOpacity={0}
+                                  interactive={false}
                                 />
                               )}
                               {pattern === 'double-ring' && (
@@ -402,6 +404,7 @@ export default function SchoolMap() {
                                   color="#183153"
                                   weight={2}
                                   fillOpacity={0}
+                                  interactive={false}
                                 />
                               )}
                             </Fragment>

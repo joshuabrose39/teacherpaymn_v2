@@ -26,7 +26,7 @@
   --shadow: 0 6px 18px rgba(18, 32, 59, 0.08);
   --radius: 14px;
   --radius-sm: 10px;
-  --salary-finder-match-control-width: 18rem;
+  --salary-finder-match-control-width: 15rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -114,22 +114,25 @@ body {
 .salary-finder-header-match {
   flex: 0 0 auto;
   width: 100%;
-  max-width: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, var(--salary-finder-match-control-width)));
+  grid-template-columns: repeat(2, var(--salary-finder-match-control-width));
   justify-content: flex-start;
   align-items: stretch;
   gap: 10px;
 }
 
 .salary-finder-header-match .input {
-  min-width: 0;
-  width: 100%;
+  min-width: var(--salary-finder-match-control-width);
+  width: var(--salary-finder-match-control-width);
+  max-width: var(--salary-finder-match-control-width);
 }
 
 .salary-finder-header-match .button {
   justify-content: center;
-  width: 100%;
+  min-width: var(--salary-finder-match-control-width);
+  width: var(--salary-finder-match-control-width);
+  max-width: var(--salary-finder-match-control-width);
+  padding-inline: 12px;
 }
 
 .salary-finder-header-match-panel {
@@ -444,13 +447,13 @@ a:hover {
   }
 
   .salary-finder-header-match {
-    grid-template-columns: repeat(2, minmax(0, var(--salary-finder-match-control-width)));
+    grid-template-columns: repeat(2, var(--salary-finder-match-control-width));
   }
 }
 
 @media (max-width: 760px) {
   .salary-finder-header-match {
-    grid-template-columns: minmax(0, var(--salary-finder-match-control-width));
+    grid-template-columns: var(--salary-finder-match-control-width);
   }
 }
 
