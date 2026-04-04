@@ -239,7 +239,7 @@ async function getProfileSchoolYearContext(fileFolderNumber, requestedSchoolYear
        SELECT \`School Year\` AS school_year FROM profile_assignments WHERE \`File Folder Number\` = :fileFolderNumber
        UNION
        SELECT \`School Year\` AS school_year FROM profile_licenses WHERE \`File Folder Number\` = :fileFolderNumber
-     )
+     ) AS profile_years
      WHERE school_year IS NOT NULL AND school_year != ''
      ORDER BY CAST(SUBSTRING(school_year, 1, 2) AS UNSIGNED) DESC, school_year DESC`,
     { fileFolderNumber }
