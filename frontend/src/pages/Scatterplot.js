@@ -59,8 +59,8 @@ function formatSalaryTick(value) {
 }
 
 function getExperienceTickStep(chartWidth) {
-  if (chartWidth >= 700) return 5;
-  if (chartWidth >= 520) return 10;
+  if (chartWidth <= 0 || chartWidth >= 420) return 5;
+  if (chartWidth >= 300) return 10;
   return 20;
 }
 
