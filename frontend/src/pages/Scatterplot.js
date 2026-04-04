@@ -584,7 +584,7 @@ export default function Scatterplot() {
         {/* Desktop layout: filter panel and scatterplot */}
         <div className="row scatterplot-top-row">
           <div className="col col-3 desktop-filter-panel scatterplot-sidebar-column">
-            <div className="scatterplot-sidebar-shell">
+            <div className="scatterplot-sidebar-shell filter-panel-shell">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>

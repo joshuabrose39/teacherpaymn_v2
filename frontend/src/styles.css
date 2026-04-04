@@ -1223,12 +1223,24 @@ th {
   min-width: 0;
 }
 
+.filter-panel-shell {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
 .filter-sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.filter-panel-shell .filter-sidebar-header {
+  padding: 1rem 1rem 0;
+  margin-bottom: 0;
 }
 
 .filter-sidebar-title {
@@ -1239,6 +1251,13 @@ th {
 
 .filter-sidebar-header .filter-buttons {
   margin-top: 0;
+}
+
+.filter-panel-shell > .filter-panel {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding-top: 0.75rem;
 }
 
 .salary-finder-top-row {

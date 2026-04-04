@@ -254,6 +254,9 @@ export default function SalaryFinder() {
   const [error, setError] = useState(null);
   const [histogramKeyPulse, setHistogramKeyPulse] = useState(false);
   const [hasLoadedChart, setHasLoadedChart] = useState(false);
+  const [isMobileHistogram, setIsMobileHistogram] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth <= 640 : false
+  ));
   const isInitialTableLoad = tableLoading && results.length === 0;
 
   // Sorting configuration for the educator table.  By default sort
@@ -303,11 +306,36 @@ export default function SalaryFinder() {
   }, [histogram]);
   const xAxisTicks = React.useMemo(() => {
     if (!histogram || histogram.length === 0) return [];
-    return histogram.map((bin) => bin.start);
-  }, [histogram]);
+    const allTicks = histogram.map((bin) => bin.start);
+    if (!isMobileHistogram || allTicks.length <= 5) {
+      return allTicks;
+    }
+
+    const targetTickCount = 4;
+    const step = Math.ceil((allTicks.length - 1) / (targetTickCount - 1));
+    const reducedTicks = allTicks.filter((_, index) => (
+      index === 0
+      || index === allTicks.length - 1
+      || index % step === 0
+    ));
+
+    return [...new Set(reducedTicks)].sort((a, b) => a - b);
+  }, [histogram, isMobileHistogram]);
   const formatSalaryTick = (value) => `${Math.round(value / 1000)}k`;
   const histogramUpperBound = histogram.length > 0 ? histogram[histogram.length - 1].end : null;
   const showYourSalaryLine = matchedEducatorSalary != null && histogramUpperBound != null && matchedEducatorSalary <= histogramUpperBound;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const updateIsMobileHistogram = () => {
+      setIsMobileHistogram(window.innerWidth <= 640);
+    };
+
+    updateIsMobileHistogram();
+    window.addEventListener('resize', updateIsMobileHistogram);
+    return () => window.removeEventListener('resize', updateIsMobileHistogram);
+  }, []);
 
   useEffect(() => {
     if (chartLoading) return undefined;
@@ -897,7 +925,7 @@ export default function SalaryFinder() {
         {/* Desktop layout: filters and content */}
         <div className="row salary-finder-top-row">
           <div className="col col-3 desktop-filter-panel salary-finder-sidebar-column">
-            <div className="filter-sidebar-shell">
+            <div className="filter-sidebar-shell filter-panel-shell">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>

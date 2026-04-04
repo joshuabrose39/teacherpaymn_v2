@@ -53,6 +53,8 @@ const MYSQL_CONFIG = {
 };
 
 const mysqlPool = mysql.createPool(MYSQL_CONFIG);
+const CHART_CACHE_TTL_MS = 10 * 60 * 1000;
+const chartResponseCache = new Map();
 
 function createDbFacade(pool) {
   return {
@@ -121,6 +123,58 @@ function parseBooleanQueryParam(val) {
   if (val == null) return false;
   const normalized = String(val).trim().toLowerCase();
   return ['1', 'true', 'yes', 'y', 'on'].includes(normalized);
+}
+
+function cloneJsonSafe(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function getChartCache(cacheKey) {
+  const cached = chartResponseCache.get(cacheKey);
+  if (!cached) return null;
+  if (Date.now() - cached.createdAt > CHART_CACHE_TTL_MS) {
+    chartResponseCache.delete(cacheKey);
+    return null;
+  }
+  return cloneJsonSafe(cached.payload);
+}
+
+function setChartCache(cacheKey, payload) {
+  chartResponseCache.set(cacheKey, {
+    createdAt: Date.now(),
+    payload: cloneJsonSafe(payload),
+  });
+}
+
+function parseSortedQueryValues(query, key) {
+  return parseMulti(query[key]).slice().sort((a, b) => a.localeCompare(b));
+}
+
+function hasExtraChartFilters(query, allowedKeys = []) {
+  const allowed = new Set([...allowedKeys, 'schoolYear', 'includePartTime']);
+  for (const [key, value] of Object.entries(query || {})) {
+    if (value == null) continue;
+    const values = Array.isArray(value) ? value : [value];
+    const hasMeaningfulValue = values.some((entry) => String(entry).trim() !== '');
+    if (!hasMeaningfulValue) continue;
+    if (!allowed.has(key)) return true;
+  }
+  return false;
+}
+
+function getCacheEligibleChartKey(routeName, query, allowedKeys = []) {
+  if (hasExtraChartFilters(query, allowedKeys)) return null;
+  const schoolYear = query.schoolYear ? String(query.schoolYear).trim() : '';
+  const includePartTime = parseBooleanQueryParam(query.includePartTime) ? '1' : '0';
+  const districtTypes = allowedKeys.includes('districtTypes')
+    ? parseSortedQueryValues(query, 'districtTypes')
+    : [];
+  return JSON.stringify({
+    routeName,
+    schoolYear,
+    includePartTime,
+    districtTypes,
+  });
 }
 
 function appendFullTimeOnlyClause(whereClause, params, includePartTime, columnName = 'full_time_part_time') {
@@ -715,6 +769,16 @@ app.get('/api/scatterplot/chart', async (req, res) => {
   try {
     const db = await dbPromise;
     const SCATTERPLOT_RENDER_LIMIT = 20000;
+    const cacheKey = getCacheEligibleChartKey('scatterplot-chart', req.query, ['districtTypes']);
+    if (cacheKey) {
+      const cachedPayload = getChartCache(cacheKey);
+      if (cachedPayload) {
+        console.log(`[chart-cache] hit ${cacheKey}`);
+        res.json(cachedPayload);
+        return;
+      }
+      console.log(`[chart-cache] miss ${cacheKey}`);
+    }
     const { whereClause, params } = buildScatterplotWhereClause(req.query);
     const salaryPercentile = 0.999;
     const totalCount = (await db.get(
@@ -723,7 +787,7 @@ app.get('/api/scatterplot/chart', async (req, res) => {
     )).count;
 
     if (totalCount === 0) {
-      res.json({
+      const payload = {
         results: [],
         totalCount: 0,
         renderLimit: SCATTERPLOT_RENDER_LIMIT,
@@ -732,7 +796,11 @@ app.get('/api/scatterplot/chart', async (req, res) => {
         salaryPercentile,
         clustered: false,
         clusterCount: 0,
-      });
+      };
+      if (cacheKey) {
+        setChartCache(cacheKey, payload);
+      }
+      res.json(payload);
       return;
     }
 
@@ -836,7 +904,7 @@ app.get('/api/scatterplot/chart', async (req, res) => {
       );
     }
 
-    res.json({
+    const payload = {
       results: displayRows,
       totalCount,
       renderLimit: SCATTERPLOT_RENDER_LIMIT,
@@ -845,7 +913,11 @@ app.get('/api/scatterplot/chart', async (req, res) => {
       salaryPercentile,
       clustered,
       clusterCount: clustered ? displayRows.length : 0,
-    });
+    };
+    if (cacheKey) {
+      setChartCache(cacheKey, payload);
+    }
+    res.json(payload);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch scatterplot chart data' });
@@ -1203,6 +1275,16 @@ app.get('/api/salary-finder', async (req, res) => {
 app.get('/api/salary-finder/chart', async (req, res) => {
   try {
     const db = await dbPromise;
+    const cacheKey = getCacheEligibleChartKey('salary-finder-chart', req.query, ['districtTypes']);
+    if (cacheKey) {
+      const cachedPayload = getChartCache(cacheKey);
+      if (cachedPayload) {
+        console.log(`[chart-cache] hit ${cacheKey}`);
+        res.json(cachedPayload);
+        return;
+      }
+      console.log(`[chart-cache] miss ${cacheKey}`);
+    }
     const districtTypes = parseMulti(req.query.districtTypes);
     const schoolClassifications = expandSchoolClassificationFilters(parseMulti(req.query.schoolClassifications));
     const educatorCategories = parseMulti(req.query.educatorCategories);
@@ -1285,7 +1367,7 @@ app.get('/api/salary-finder/chart', async (req, res) => {
     const totalCount = Number(aggregateRow?.total_count || 0);
 
     if (totalCount === 0) {
-      res.json({
+      const payload = {
         histogram: [],
         totalCount: 0,
         histogramOutlierCount: 0,
@@ -1293,7 +1375,11 @@ app.get('/api/salary-finder/chart', async (req, res) => {
         histogramPercentile,
         averageSalary: null,
         medianSalary: null,
-      });
+      };
+      if (cacheKey) {
+        setChartCache(cacheKey, payload);
+      }
+      res.json(payload);
       return;
     }
 
@@ -1384,7 +1470,7 @@ app.get('/api/salary-finder/chart', async (req, res) => {
       histogram = buildHistogramFromBucketRows(histogramStart, histogramEnd, binWidth, bucketRows);
     }
 
-    res.json({
+    const payload = {
       histogram,
       totalCount,
       histogramOutlierCount: outlierCount,
@@ -1392,7 +1478,11 @@ app.get('/api/salary-finder/chart', async (req, res) => {
       histogramPercentile,
       averageSalary,
       medianSalary,
-    });
+    };
+    if (cacheKey) {
+      setChartCache(cacheKey, payload);
+    }
+    res.json(payload);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch salary finder chart data' });

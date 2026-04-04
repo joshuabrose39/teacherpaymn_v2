@@ -219,7 +219,7 @@ export default function SchoolMap() {
         {/* Desktop layout: filter panel and map side by side */}
         <div className="row">
           <div className="col col-3 desktop-filter-panel">
-            <div className="filter-sidebar-shell">
+            <div className="filter-sidebar-shell filter-panel-shell">
               <div className="filter-sidebar-header">
                 <h3 className="filter-sidebar-title">Filters</h3>
                 <div className="filter-buttons salary-finder-sticky-filter-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
