@@ -58,15 +58,19 @@ function formatSalaryTick(value) {
   return `${Math.round(value / 1000)}k`;
 }
 
-function getSalaryTickStep(maxValue) {
-  if (maxValue <= 50000) return 5000;
+function getSalaryTickStep(maxValue, chartWidth) {
+  if (chartWidth >= 900) return 5000;
+  if (chartWidth >= 650) {
+    if (maxValue <= 160000) return 10000;
+    return 20000;
+  }
   if (maxValue <= 120000) return 10000;
   if (maxValue <= 240000) return 20000;
   return 50000;
 }
 
-function buildSalaryTicks(maxValue) {
-  const step = getSalaryTickStep(maxValue);
+function buildSalaryTicks(maxValue, chartWidth) {
+  const step = getSalaryTickStep(maxValue, chartWidth);
   const ticks = [];
   for (let value = 0; value <= maxValue; value += step) {
     ticks.push(value);
@@ -149,12 +153,14 @@ export default function Scatterplot() {
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'contract_salary', direction: 'desc' });
   const [hasLoadedChart, setHasLoadedChart] = useState(false);
+  const [chartWidth, setChartWidth] = useState(0);
   const isInitialTableLoad = tableLoading && tableResults.length === 0;
   const [pendingTableQuery, setPendingTableQuery] = useState('');
   const [loadedTableQuery, setLoadedTableQuery] = useState('');
   const [tableVisible, setTableVisible] = useState(false);
   const tableSectionRef = useRef(null);
   const tableLoadMoreRef = useRef(null);
+  const scatterplotChartRef = useRef(null);
   const requestSequenceRef = useRef(0);
 
   // Mobile filter panel state.
@@ -424,7 +430,24 @@ export default function Scatterplot() {
     const roundedMax = Math.ceil(max / 10000) * 10000;
     return [0, roundedMax];
   }, [results]);
-  const salaryTicks = React.useMemo(() => buildSalaryTicks(salaryDomain[1]), [salaryDomain]);
+  const salaryTicks = React.useMemo(
+    () => buildSalaryTicks(salaryDomain[1], chartWidth),
+    [salaryDomain, chartWidth],
+  );
+
+  useEffect(() => {
+    const node = scatterplotChartRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      setChartWidth(entry.contentRect.width);
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const sortedResults = React.useMemo(() => {
     const sortable = [...tableResults];
     const { key, direction } = sortConfig;
@@ -714,7 +737,7 @@ export default function Scatterplot() {
                       <p style={{ textAlign: 'center', margin: '2rem 0' }}>No educators match your filters.</p>
                     </div>
                   ) : (
-                    <div className="chart-wrap scatterplot-chart-wrap" style={{ height: '520px' }}>
+                    <div className="chart-wrap scatterplot-chart-wrap" style={{ height: '520px' }} ref={scatterplotChartRef}>
                       <ResponsiveContainer width="100%" height="100%">
                         <ScatterChart margin={{ top: 12, right: 10, left: 16, bottom: 18 }}>
                           <CartesianGrid strokeDasharray="3 3" />
