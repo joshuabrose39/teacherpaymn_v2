@@ -778,21 +778,6 @@ export default function SalaryFinder() {
             <p>Filter educators, explore salary distributions, and view individual records.</p>
           </div>
           <div className="toolbar salary-finder-header-year">
-            <div className="header-field header-field-inline">
-              <label htmlFor="salary-finder-school-year">School Year:</label>
-              <select
-                id="salary-finder-school-year"
-                className="select"
-                value={selectedSchoolYear}
-                onChange={handleSchoolYearChange}
-              >
-                {filterOptions.schoolYears.map((schoolYear) => (
-                  <option key={schoolYear} value={schoolYear}>
-                    {formatSchoolYearLabel(schoolYear)}
-                  </option>
-                ))}
-              </select>
-            </div>
             <button
               className="button secondary mobile-filter-toggle"
               onClick={() => setShowFiltersMobile((show) => !show)}
@@ -843,8 +828,23 @@ export default function SalaryFinder() {
         <div className={showFiltersMobile ? 'mobile-filter-panel open' : 'mobile-filter-panel'}>
           <div className="filter-panel">
             <h3>Filters</h3>
+            <div className="filter-section">
+              <label htmlFor="salary-finder-school-year-mobile">School Year</label>
+              <select
+                id="salary-finder-school-year-mobile"
+                className="select"
+                value={selectedSchoolYear}
+                onChange={handleSchoolYearChange}
+              >
+                {filterOptions.schoolYears.map((schoolYear) => (
+                  <option key={schoolYear} value={schoolYear}>
+                    {formatSchoolYearLabel(schoolYear)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <CheckboxMultiSelect
-              label="District Type Category"
+              label="District Category"
               options={DISTRICT_TYPE_CATEGORY_OPTIONS}
               selected={districtTypeCategories}
               setSelected={(nextCategories) => {
@@ -947,8 +947,23 @@ export default function SalaryFinder() {
                 </div>
               </div>
               <div className="filter-panel salary-finder-filter-panel">
+                <div className="filter-section">
+                  <label htmlFor="salary-finder-school-year-desktop">School Year</label>
+                  <select
+                    id="salary-finder-school-year-desktop"
+                    className="select"
+                    value={selectedSchoolYear}
+                    onChange={handleSchoolYearChange}
+                  >
+                    {filterOptions.schoolYears.map((schoolYear) => (
+                      <option key={schoolYear} value={schoolYear}>
+                        {formatSchoolYearLabel(schoolYear)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <CheckboxMultiSelect
-                  label="District Type Category"
+                  label="District Category"
                   options={DISTRICT_TYPE_CATEGORY_OPTIONS}
                   selected={districtTypeCategories}
                   setSelected={(nextCategories) => {

@@ -492,21 +492,6 @@ export default function Scatterplot() {
           </div>
           {/* Mobile filter toggle */}
           <div className="toolbar">
-            <div className="header-field header-field-inline">
-              <label htmlFor="scatterplot-school-year">School Year:</label>
-              <select
-                id="scatterplot-school-year"
-                className="select"
-                value={selectedSchoolYear}
-                onChange={handleSchoolYearChange}
-              >
-                {filterOptions.schoolYears.map((schoolYear) => (
-                  <option key={schoolYear} value={schoolYear}>
-                    {formatSchoolYearLabel(schoolYear)}
-                  </option>
-                ))}
-              </select>
-            </div>
             <button
               className="button secondary mobile-filter-toggle"
               onClick={() => setShowFiltersMobile(!showFiltersMobile)}
@@ -523,8 +508,23 @@ export default function Scatterplot() {
         <div className={showFiltersMobile ? 'mobile-filter-panel open' : 'mobile-filter-panel'}>
           <div className="filter-panel">
             <h3>Filters</h3>
+            <div className="filter-section">
+              <label htmlFor="scatterplot-school-year-mobile">School Year</label>
+              <select
+                id="scatterplot-school-year-mobile"
+                className="select"
+                value={selectedSchoolYear}
+                onChange={handleSchoolYearChange}
+              >
+                {filterOptions.schoolYears.map((schoolYear) => (
+                  <option key={schoolYear} value={schoolYear}>
+                    {formatSchoolYearLabel(schoolYear)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <CheckboxMultiSelect
-              label="District Type Category"
+              label="District Category"
               options={DISTRICT_TYPE_CATEGORY_OPTIONS}
               selected={districtTypeCategories}
               setSelected={(nextCategories) => {
@@ -593,8 +593,23 @@ export default function Scatterplot() {
                 </div>
               </div>
               <div className="filter-panel scatterplot-filter-panel">
+                <div className="filter-section">
+                  <label htmlFor="scatterplot-school-year-desktop">School Year</label>
+                  <select
+                    id="scatterplot-school-year-desktop"
+                    className="select"
+                    value={selectedSchoolYear}
+                    onChange={handleSchoolYearChange}
+                  >
+                    {filterOptions.schoolYears.map((schoolYear) => (
+                      <option key={schoolYear} value={schoolYear}>
+                        {formatSchoolYearLabel(schoolYear)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <CheckboxMultiSelect
-                  label="District Type Category"
+                  label="District Category"
                   options={DISTRICT_TYPE_CATEGORY_OPTIONS}
                   selected={districtTypeCategories}
                   setSelected={(nextCategories) => {

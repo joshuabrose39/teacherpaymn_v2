@@ -274,11 +274,12 @@ a:hover {
 .app {
   min-height: 100vh;
   display: grid;
-  grid-template-rows: 72px 1fr;
+  grid-template-rows: 72px 1fr auto;
   grid-template-columns: 1fr;
   grid-template-areas:
     "header"
-    "main";
+    "main"
+    "footer";
 }
 
 /* Top header */
@@ -457,6 +458,44 @@ a:hover {
   grid-area: main;
   padding: 24px;
   overflow-y: auto;
+}
+
+.footer {
+  grid-area: footer;
+  background: #f7f9fd;
+  border-top: 1px solid var(--border);
+  padding: 18px 24px 24px;
+}
+
+.footer-inner {
+  max-width: 1480px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.footer-links a {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.footer-links a.active {
+  color: var(--primary);
 }
 
 /* Cards and statistics */
@@ -1135,19 +1174,11 @@ th {
 @media (max-width: 860px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: 72px auto 1fr;
+    grid-template-rows: 72px 1fr auto;
     grid-template-areas:
       "header"
-      "sidebar"
-      "main";
-  }
-  .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-  .nav-group {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+      "main"
+      "footer";
   }
   .header {
     padding: 0 16px;
@@ -1161,11 +1192,18 @@ th {
   .stats {
     grid-template-columns: 1fr;
   }
-  .nav-group {
-    grid-template-columns: 1fr;
-  }
   .main {
     padding: 16px;
+  }
+  .footer {
+    padding: 16px;
+  }
+  .footer-inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .footer-links {
+    gap: 12px 16px;
   }
   .card-title {
     font-size: 1.6rem;
@@ -1229,8 +1267,9 @@ th {
 
 .filter-panel-shell {
   background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 

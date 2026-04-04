@@ -10,12 +10,12 @@ const AboutProject = lazy(() => import('./pages/AboutProject'));
 const EducatorProfile = lazy(() => import('./pages/EducatorProfile'));
 
 function App() {
-  // Define navigation items for both top and sidebar navigation. Icons are simple
-  // Unicode characters for visual differentiation without external dependencies.
-  const navItems = [
-    { name: 'Schools', path: '/school-map', icon: '🗺️' },
+  const primaryNavItems = [
+    { name: 'School Map', path: '/school-map', icon: '🗺️' },
     { name: 'Compare Pay', path: '/salary-finder', icon: '💲' },
     { name: 'Pay vs. Experience', path: '/scatterplot', icon: '📊' },
+  ];
+  const footerNavItems = [
     { name: 'About the Data', path: '/methodology', icon: '📄' },
     { name: 'About the Author', path: '/about-project', icon: 'ℹ️' },
   ];
@@ -36,7 +36,7 @@ function App() {
             </NavLink>
             {/* Top navigation links (hidden on small screens) */}
             <nav className="top-links">
-              {navItems.map((item) => (
+              {primaryNavItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
@@ -69,7 +69,7 @@ function App() {
         ></div>
         <div className={showMobileNav ? 'mobile-nav-panel open' : 'mobile-nav-panel'}>
           <nav className="mobile-nav-links">
-            {navItems.map((item) => (
+            {primaryNavItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -102,6 +102,23 @@ function App() {
             </Routes>
           </Suspense>
         </main>
+        <footer className="footer">
+          <div className="footer-inner">
+            <div className="footer-brand">Minnesota Teacher Pay</div>
+            <nav className="footer-links" aria-label="Footer">
+              {footerNavItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                  onClick={() => setShowMobileNav(false)}
+                >
+                  {item.name}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        </footer>
       </div>
     </Router>
   );

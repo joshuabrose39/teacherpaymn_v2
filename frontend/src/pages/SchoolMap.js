@@ -163,7 +163,7 @@ export default function SchoolMap() {
         {/* Page header with title and description */}
         <div className="page-header">
           <div className="page-title">
-            <h2>Schools</h2>
+            <h2>School Map</h2>
             <p>Explore Minnesota schools and summary statistics. Filter by district type and school classification.</p>
           </div>
           {/* Mobile filter toggle button */}
@@ -185,7 +185,7 @@ export default function SchoolMap() {
           <div className="filter-panel">
             <h3>Filters</h3>
             <CheckboxMultiSelect
-              label="District Type Category"
+              label="District Category"
               options={DISTRICT_TYPE_CATEGORY_OPTIONS}
               selected={districtTypeCategories}
               setSelected={(nextCategories) => {
@@ -233,7 +233,7 @@ export default function SchoolMap() {
               </div>
               <div className="filter-panel school-map-filter-panel">
                 <CheckboxMultiSelect
-                  label="District Type Category"
+                  label="District Category"
                   options={DISTRICT_TYPE_CATEGORY_OPTIONS}
                   selected={districtTypeCategories}
                   setSelected={(nextCategories) => {

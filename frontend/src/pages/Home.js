@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 
 const featureCards = [
   {
-    title: 'Schools',
+    title: 'School Map',
     path: '/school-map',
     eyebrow: 'Map and school profiles',
     description:
@@ -14,9 +14,9 @@ const featureCards = [
       'Compare enrollment and median pay',
     ],
     previewImage: '/home/school-map.jpg',
-    previewAlt: 'Schools dashboard screenshot',
+    previewAlt: 'School Map dashboard screenshot',
     previewClass: 'home-preview-image home-preview-image-map',
-    cta: 'Open Schools',
+    cta: 'Open School Map',
   },
   {
     title: 'Compare Pay',
@@ -81,7 +81,7 @@ export default function Home() {
           </p>
           <div className="home-link-row" aria-label="Quick links">
             <NavLink to="/salary-finder" className="home-inline-link">Compare Pay</NavLink>
-            <NavLink to="/school-map" className="home-inline-link">Explore Schools</NavLink>
+            <NavLink to="/school-map" className="home-inline-link">Explore School Map</NavLink>
             <NavLink to="/methodology" className="home-inline-link">About the Data</NavLink>
           </div>
         </div>
